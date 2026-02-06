@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Trader Prototype — Auto Rounds + Dual Bets</title>
+<style>
+  :root{
+    --bg:#0b0f19; --card:#111a2e; --panel:#0b1222; --text:#e8eefc;
+    --muted:rgba(232,238,252,.75); --border:rgba(255,255,255,.10);
+    --blue:rgba(79,124,255,.18); --red:rgba(255,77,109,.25);
+    --g1:rgba(32,201,151,.38); --g2:rgba(0,209,255,.28);
+    --cta:#4f7cff;
+  }
+  body{margin:24px;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;}
+  .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;}
+  h2{margin:0 0 10px;font-size:14px;opacity:.92;}
+  .top{display:flex;gap:16px;flex-wrap:nowrap;align-items:stretch;}
+  .barsWrap{flex:1 1 auto;min-width:520px;padding-bottom:12px;}
+  .controls{flex:0 0 360px;min-width:360px;max-width:360px;}
+  @media (max-width: 980px){
+    .top{flex-wrap:wrap;}
+    .controls{flex:1 1 360px;max-width:none;}
+  }
+
+  .bars{display:flex;gap:10px;align-items:flex-end;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:320px;}
+  .bar{width:54px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:var(--blue);display:flex;justify-content:center;align-items:flex-end;position:relative;flex:0 0 auto;}
+  .bar.zero{background:var(--red);}
+  .bar .i{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:11px;opacity:.85;font-family:ui-monospace,monospace;}
+  .bar .v{font-size:11px;padding:6px;font-family:ui-monospace,monospace;}
+  .bar.cash1{box-shadow:0 0 0 3px var(--g1) inset;}
+  .bar.cash2{box-shadow:0 0 0 3px var(--g2) inset;}
+  .bar.cash12{box-shadow:0 0 0 3px var(--g1) inset, 0 0 0 6px var(--g2) inset;}
+
+  .kv{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .pill{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;background:rgba(255,255,255,.06);color:var(--muted);}
+  label{font-size:12px;display:block;margin:10px 0 6px;opacity:.9;}
+  input{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:var(--panel);color:var(--text);box-sizing:border-box;}
+  .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;}
+  .status{margin-top:10px;font-size:13px;line-height:1.45;color:var(--muted);}
+  .balance{font-size:18px;font-weight:800;letter-spacing:.2px;}
+  .sub{font-size:12px;color:var(--muted);margin-top:4px;}
+
+  .countdownBox{
+    margin-top:12px;
+    padding:12px;
+    border-radius:14px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.10);
+    display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .countdownBig{font-size:18px;font-weight:900;letter-spacing:.2px;}
+  .phaseTag{font-size:12px;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--muted);}
+  .phaseTag.running{background:rgba(79,124,255,.18);color:rgba(232,238,252,.95);}
+  .phaseTag.countdown{background:rgba(255,255,255,.06);color:var(--muted);}
+
+  .betsRow{display:flex;gap:14px;flex-wrap:nowrap;justify-content:flex-start;align-items:stretch;margin-top:16px;}
+  .betCard{flex:0 0 320px;max-width:320px;min-width:320px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px;}
+  .betHeader{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .tag{font-size:12px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--muted);}
+  .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  button{padding:10px 12px;border-radius:12px;border:0;cursor:pointer;background:var(--cta);color:#fff;font-weight:750;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  .btn2{background:#2a3552;}
+  .btn3{background:#20c997;color:#04140e;}
+  .btnDanger{background:#ff4d6d;}
+
+  .quickRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .quickBtn{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border);font-weight:800;font-size:12px;}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted);}
+
+  .historyBox{
+    margin-top:12px;
+    padding:12px;
+    border-radius:14px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.10);
+  }
+  .historyHeader{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .historyTitle{font-size:12px;letter-spacing:.2px;opacity:.9;font-weight:800;}
+  .historyMax{font-size:12px;color:var(--muted);}
+  .historyList{
+    margin-top:10px;
+    height:180px;               /* fixed area */
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:4px;
+  }
+  .historyRow{
+    display:flex;justify-content:space-between;gap:10px;
+    padding:6px 0;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    font-size:12px;
+    color:var(--muted);
+  }
+  .historyRow:last-child{border-bottom:0;}
+  .historyRow .mono{color:rgba(232,238,252,.9);}
+
+
+  .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;justify-content:flex-start;}
+  .actionBtn{width:220px; min-width:220px; text-align:center;} /* fits 'Place for Next Round' */
+
+</style>
+</head>
+<body>
+
+<div class="top row">
+  <div class="card barsWrap">
+    <h2>Round</h2>
+    <div id="bars" class="bars"></div>
+    <div class="kv">
+      <span class="pill mono">Auto step: 2s</span>
+      <span class="pill mono">Max columns: 50</span>
+      <span class="pill mono">Cap: 1,000,000x</span>
+      <span class="pill mono">Between rounds: 5s</span>
+      <span class="pill mono">Auto scroll: latest</span>
+    </div>
+  </div>
+
+  <div class="card controls">
+    <h2>Wallet</h2>
+    <div class="balance mono" id="balance">$ 3000.00</div>
+    <div class="sub">Up to 2 concurrent bets. Each can cash out independently.</div>
+
+    <div class="mono" style="margin-top:10px;opacity:.9">Current Nonce: <span id="nonceLabel">—</span></div>
+
+    <div class="countdownBox">
+      <div>
+        <div class="phaseTag countdown" id="phaseTag">COUNTDOWN</div>
+        <div class="countdownBig mono" id="countdownBig">Next round in 5s</div>
+      </div>
+</div>
+<div class="status" id="status"></div>
+
+    <div class="historyBox">
+      <div class="historyHeader">
+        <div class="historyTitle">History</div>
+        <div class="historyMax mono">Max so far: <span id="maxSoFar">—</span></div>
+      </div>
+      <div class="historyList" id="historyList"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="betsRow">
+  <div class="betCard" id="bet1Card">
+    <div class="betHeader">
+      <h2 style="margin:0;">Bet 1</h2>
+      <span class="tag" id="bet1Tag">Idle</span>
+    </div>
+
+    <label>Amount</label>
+    <input id="bet1Amount" class="mono" value="1" inputmode="decimal"/>
+
+    <div class="quickRow">
+      <button class="quickBtn" id="b1q10">10</button>
+      <button class="quickBtn" id="b1q100">100</button>
+      <button class="quickBtn" id="b1q1000">1000</button>
+    </div>
+
+    <div class="btnRow">
+      <button id="bet1Action" class="actionBtn btn2">Bet</button>
+    </div>
+
+    <div class="hint" id="bet1Hint"></div>
+  </div>
+
+  <div class="betCard" id="bet2Card">
+    <div class="betHeader">
+      <h2 style="margin:0;">Bet 2</h2>
+      <span class="tag" id="bet2Tag">Idle</span>
+    </div>
+
+    <label>Amount</label>
+    <input id="bet2Amount" class="mono" value="1" inputmode="decimal"/>
+
+    <div class="quickRow">
+      <button class="quickBtn" id="b2q10">10</button>
+      <button class="quickBtn" id="b2q100">100</button>
+      <button class="quickBtn" id="b2q1000">1000</button>
+    </div>
+
+    <div class="btnRow">
+      <button id="bet2Action" class="actionBtn btn2">Bet</button>
+    </div>
+
+    <div class="hint" id="bet2Hint"></div>
+  </div>
+</div>
+
+
+<script>
+async function sha256(str){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return new Uint8Array(buf);
+}
+function toU52(bytes){
+  let r=0n;
+  for(let i=0;i<7;i++) r=(r<<8n)|BigInt(bytes[i]);
+  r >>= 4n;
+  return Number(r)/(2**52);
+}
+async function rngU(serverSeed, clientSeed, nonce, step, tag){
+  const s = `${serverSeed}|${clientSeed}|${nonce}|${step}|${tag}`;
+  return toU52(await sha256(s));
+}
+
+function randomHex(bytes){
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return Array.from(a, b=>b.toString(16).padStart(2,"0")).join("");
+}
+// Hidden seeds (auto-generated). Remove UI to avoid layout shifts.
+const SERVER_SEED = randomHex(32);
+const CLIENT_SEED = randomHex(16);
+
+const STEP_MS = 2000;
+const BETWEEN_MS = 5000;
+const MAX_COLS = 50;
+const MAX_MULT = 1_000_000;
+
+const p0A = 0.02;
+const qD  = 0.20;
+
+let balance = 3000.00;
+
+const round = {
+  phase: "countdown",
+  countdownLeftMs: BETWEEN_MS,
+  nonce: 0,
+  step: 0,
+  cols: [],
+  endReason: "",
+  timer: null,
+  cashMarks: { b1: null, b2: null },
+};
+
+const bet1 = makeBetState(1);
+const bet2 = makeBetState(2);
+
+
+// History (fixed-size UI area)
+const history = [];
+let maxSoFar = 0;
+const HISTORY_LIMIT = 50;
+
+function fmtMult(x){
+  if(!x || x<=0) return "0x";
+  return (Math.floor(x*100)/100).toFixed(2) + "x";
+}
+
+function renderHistory(){
+  const list = document.getElementById("historyList");
+  const maxEl = document.getElementById("maxSoFar");
+  if(maxEl) maxEl.textContent = maxSoFar>0 ? fmtMult(maxSoFar) : "—";
+  if(!list) return;
+  list.innerHTML = "";
+  // newest first
+  for(const h of history){
+    const row = document.createElement("div");
+    row.className = "historyRow";
+    const left = document.createElement("div");
+    left.innerHTML = `Nonce <span class="mono">${h.nonce}</span>`;
+    const right = document.createElement("div");
+    right.innerHTML = `<span class="mono">${fmtMult(h.max)}</span>`;
+    row.appendChild(left);
+    row.appendChild(right);
+    list.appendChild(row);
+  }
+}
+
+function makeBetState(id){
+  return { id, amount: 1, placedForNext: false, activeThisRound: false, cashedOut: false, cashoutIndex: null };
+}
+
+const $ = (id)=>document.getElementById(id);
+function money(x){ return `$ ${x.toFixed(2)}`; }
+function show2(x){ return x===0 ? "0x" : (Math.floor(x*100)/100).toFixed(2)+"x"; }
+
+function setBalance(x){
+  balance = x;
+  $("balance").textContent = money(balance);
+}
+
+function setPhase(phase){
+  const tag = $("phaseTag");
+  if(phase === "running"){
+    tag.textContent = "RUNNING";
+    tag.classList.remove("countdown");
+    tag.classList.add("running");
+  } else {
+    tag.textContent = "COUNTDOWN";
+    tag.classList.remove("running");
+    tag.classList.add("countdown");
+  }
+}
+
+function updateCountdownUI(){
+  const secs = Math.max(0, Math.ceil(round.countdownLeftMs/1000));
+  $("countdownBig").textContent = `Next round in ${secs}s`;
+}
+
+function updateNonceUI(){
+  $("nonceLabel").textContent = round.nonce ? String(round.nonce) : "—";
+}
+
+function updateBetUI(b){
+  const tag  = $(b.id===1 ? "bet1Tag"  : "bet2Tag");
+  const hint = $(b.id===1 ? "bet1Hint" : "bet2Hint");
+  const action = $(b.id===1 ? "bet1Action" : "bet2Action");
+  const amt  = $(b.id===1 ? "bet1Amount":"bet2Amount");
+
+  const lockedAmount = b.placedForNext || b.activeThisRound;
+  amt.disabled = lockedAmount;
+
+  // Configure single action button
+  // Default (queue): Bet during countdown, Place for Next Round during running
+  if(b.activeThisRound){
+    action.textContent = "Cashout";
+    action.className = "actionBtn btn3";
+    action.disabled = !(round.phase==="running" && round.cols.at(-1)!==0);
+  } else if(b.placedForNext){
+    action.textContent = "Cancel";
+    action.className = "actionBtn btnDanger";
+    action.disabled = false;
+  } else {
+    action.textContent = (round.phase==="countdown") ? "Bet" : "Place for Next Round";
+    action.className = "actionBtn btn2";
+    action.disabled = false;
+  }
+
+  // Status precedence: Queued > Live > Cashed out > Idle
+  if(b.placedForNext){
+    tag.textContent = "Queued";
+    tag.style.background = "rgba(79,124,255,.16)";
+    tag.style.color = "rgba(232,238,252,.9)";
+    hint.textContent = b.cashedOut && b.cashoutIndex!==null
+      ? `Queued for next. Cashed at #${b.cashoutIndex+1} (${show2(round.cols[b.cashoutIndex])}). Cancel anytime before next round starts.`
+      : "Queued for the next round. Cancel anytime before it starts.";
+  } else if(b.activeThisRound){
+    tag.textContent = "Live";
+    tag.style.background = "rgba(255,255,255,.06)";
+    tag.style.color = "rgba(232,238,252,.75)";
+    hint.textContent = "You can cash out any time before crash.";
+  } else if(b.cashedOut){
+    tag.textContent = "Cashed out";
+    tag.style.background = "rgba(32,201,151,.18)";
+    tag.style.color = "rgba(232,238,252,.9)";
+    hint.textContent = (b.cashoutIndex!==null)
+      ? `Cashed at #${b.cashoutIndex+1} (${show2(round.cols[b.cashoutIndex])}). You can queue next round now.`
+      : "Cashed out. You can queue next round now.";
+  } else {
+    tag.textContent = "Idle";
+    tag.style.background = "rgba(255,255,255,.06)";
+    tag.style.color = "rgba(232,238,252,.75)";
+    hint.textContent = "Not queued for next round.";
+  }
+}
+
+function updateAllUI(){
+  updateBetUI(bet1);
+  updateBetUI(bet2);
+}
+
+function renderBars(){
+  const bars = $("bars");
+  const BAR_W = 54;
+  const GAP = 10;
+  const PAD = 24; // left+right padding approximated
+  const capacity = Math.max(1, Math.floor((bars.clientWidth - PAD) / (BAR_W + GAP)));
+  const total = round.cols.length;
+  const start = Math.max(0, total - capacity);
+  const view = round.cols.slice(start);
+
+  bars.innerHTML = "";
+  const max = Math.max(2, ...view.map(x=>x||0));
+  for(let i=0;i<view.length;i++){
+    const realIndex = start + i;
+    const m = view[i];
+
+    const div = document.createElement("div");
+    let cls = "bar";
+    if(m===0) cls += " zero";
+
+    const m1 = (round.cashMarks.b1===realIndex);
+    const m2 = (round.cashMarks.b2===realIndex);
+    if(m1 && m2) cls += " cash12";
+    else if(m1) cls += " cash1";
+    else if(m2) cls += " cash2";
+
+    div.className = cls;
+    div.style.height = Math.max(26, (m===0?0.02:(m/max))*190) + "px";
+
+    const idx = document.createElement("div");
+    idx.className = "i";
+    idx.textContent = "#" + (realIndex+1);
+
+    const val = document.createElement("div");
+    val.className = "v";
+    val.textContent = show2(m);
+
+    div.appendChild(idx);
+    div.appendChild(val);
+    bars.appendChild(div);
+  }
+}
+
+function nextNonce(){
+  if(round.nonce===0) round.nonce = Math.floor(Date.now()/1000);
+  else round.nonce += 1;
+  updateNonceUI();
+  return String(round.nonce);
+}
+
+function resetRoundForNew(){
+  round.step = 0;
+  round.cols = [];
+  round.endReason = "";
+  round.cashMarks.b1 = null;
+  round.cashMarks.b2 = null;
+
+  // Move queued bets into active for this round
+  for(const b of [bet1, bet2]){
+    b.activeThisRound = b.placedForNext;
+    b.placedForNext = false;
+    b.cashedOut = false;
+    b.cashoutIndex = null;
+  }
+}
+
+async function startRound(){
+  round.phase = "running";
+  setPhase("running");
+
+  const nonceStr = nextNonce();
+  resetRoundForNew();
+
+  const serverSeed = SERVER_SEED;
+  const clientSeed = CLIENT_SEED;
+
+  const uGate = await rngU(serverSeed, clientSeed, nonceStr, round.step++, "A:gate");
+  if(uGate < p0A){
+    round.cols.push(0);
+    renderBars();
+    round.endReason = "A=0";
+    endRound(true);
+    return;
+  }
+
+  const uBody = await rngU(serverSeed, clientSeed, nonceStr, round.step++, "A:body");
+  const A = 2 - 1.5 * Math.sqrt(1 - uBody);
+  round.cols.push(A);
+  renderBars();
+
+  $("status").innerHTML = `Current: <span class="mono">${show2(A)}</span>`;
+  updateAllUI();
+
+  if(round.timer) clearInterval(round.timer);
+  round.timer = setInterval(stepRound, STEP_MS);
+}
+
+async function stepRound(){
+  if(round.phase !== "running") return;
+
+  if(round.cols.length >= MAX_COLS){
+    round.endReason = "MAX_COLS";
+    endRound(false, true);
+    return;
+  }
+
+  const last = round.cols.at(-1);
+  if(last === 0){
+    round.endReason = "CRASH";
+    endRound(true);
+    return;
+  }
+
+  const serverSeed = SERVER_SEED;
+  const clientSeed = CLIENT_SEED;
+  const nonceStr = String(round.nonce);
+
+  const uGate = await rngU(serverSeed, clientSeed, nonceStr, round.step++, "D:gate");
+  if(uGate < qD){
+    round.cols.push(0);
+    renderBars();
+    round.endReason = "CRASH";
+    endRound(true);
+    return;
+  }
+
+  const uBody = await rngU(serverSeed, clientSeed, nonceStr, round.step++, "D:body");
+  const delta = 0.5 + 1.5*uBody;
+  let next = last * delta;
+
+  if(next >= MAX_MULT){
+    next = MAX_MULT;
+    round.cols.push(next);
+    renderBars();
+    round.endReason = "CAP";
+    endRound(false, true);
+    return;
+  }
+
+  round.cols.push(next);
+  renderBars();
+  $("status").innerHTML = `Current: <span class="mono">${show2(next)}</span>`;
+  updateAllUI();
+}
+
+function endRound(crashed, limitAuto=false){
+  if(round.timer){ clearInterval(round.timer); round.timer=null; }
+
+  // Record history: max multiplier reached this round (excluding 0)
+  const roundMax = Math.max(0, ...round.cols.filter(x=>x>0));
+  history.unshift({ nonce: String(round.nonce), max: roundMax });
+  if(history.length > HISTORY_LIMIT) history.length = HISTORY_LIMIT;
+  if(roundMax > maxSoFar) maxSoFar = roundMax;
+  renderHistory();
+
+  if(limitAuto && round.cols.at(-1)!==0){
+    for(const b of [bet1, bet2]){
+      if(b.activeThisRound && !b.cashedOut){
+        cashoutBet(b, true);
+      }
+    }
+  }
+
+  for(const b of [bet1, bet2]){
+    b.activeThisRound = false;
+  }
+
+  round.phase = "countdown";
+  setPhase("countdown");
+  round.countdownLeftMs = BETWEEN_MS;
+
+  const reason = crashed ? "CRASH" : round.endReason;
+  $("status").innerHTML = `Ended: <span class="mono">${reason}</span>`;
+  updateCountdownUI();
+  updateAllUI();
+}
+
+function readAmount(inputId){
+  const v = parseFloat($(inputId).value);
+  if(!Number.isFinite(v)) return 0;
+  return Math.max(0, v);
+}
+
+function setAmount(inputId, b, v){
+  if(b.placedForNext || b.activeThisRound) return;
+  $(inputId).value = String(v);
+  b.amount = v;
+}
+
+function placeBet(b){
+  // Can queue anytime (running or countdown) as long as bet isn't currently live and isn't already queued.
+  if(b.placedForNext || b.activeThisRound) return;
+
+  const amtId = b.id===1 ? "bet1Amount" : "bet2Amount";
+  const amt = readAmount(amtId);
+  if(amt <= 0) return;
+
+  if(balance < amt){
+    $("status").innerHTML = `Insufficient balance. Need <span class="mono">${amt.toFixed(2)}</span>.`;
+    return;
+  }
+
+  b.amount = amt;
+  b.placedForNext = true;
+  setBalance(balance - amt);
+  updateAllUI();
+}
+
+function cancelBet(b){
+  if(!b.placedForNext) return;
+  b.placedForNext = false;
+  setBalance(balance + b.amount);
+  updateAllUI();
+}
+
+
+function handleBetAction(b){
+  // One button = Bet / Place for Next Round / Cancel / Cashout
+  // Priority:
+  // 1) If bet is live this round => Cashout
+  // 2) Else if queued for next => Cancel
+  // 3) Else => Place/Bet for next
+  if(b.activeThisRound && round.phase==="running" && round.cols.at(-1)!==0){
+    cashoutBet(b, false);
+    return;
+  }
+  if(b.placedForNext){
+    cancelBet(b);
+    return;
+  }
+  placeBet(b);
+}
+
+function cashoutBet(b, isAuto){
+  if(round.phase !== "running") return;
+  if(!b.activeThisRound || b.cashedOut) return;
+
+  const idx = round.cols.length - 1;
+  const m = round.cols[idx];
+  if(m===0) return;
+
+  b.cashedOut = true;
+  b.cashoutIndex = idx;
+
+  if(b.id===1) round.cashMarks.b1 = idx;
+  else round.cashMarks.b2 = idx;
+
+  const payout = b.amount * m;
+  setBalance(balance + payout);
+
+  b.activeThisRound = false; // immediately available to queue next round
+
+  renderBars();
+  updateAllUI();
+
+  if(!isAuto){
+    $("status").innerHTML = `Cashout Bet ${b.id}: <span class="mono">${show2(m)}</span> → <span class="mono">${payout.toFixed(4)}</span>`;
+  }
+}
+
+function tick(){
+  if(round.phase !== "countdown") return;
+  round.countdownLeftMs -= 250;
+  updateCountdownUI();
+  if(round.countdownLeftMs <= 0){
+    startRound();
+  }
+}
+
+function init(){
+  setBalance(balance);
+  setPhase("countdown");
+  updateNonceUI();
+  updateCountdownUI();
+  $("status").innerHTML = "Ready.";
+  renderHistory();
+  updateAllUI();
+
+  // Action buttons
+  $("bet1Action").onclick = ()=>handleBetAction(bet1);
+  $("bet2Action").onclick = ()=>handleBetAction(bet2);
+
+  // Quick amount set
+  $("b1q10").onclick = ()=>setAmount("bet1Amount", bet1, 10);
+  $("b1q100").onclick = ()=>setAmount("bet1Amount", bet1, 100);
+  $("b1q1000").onclick = ()=>setAmount("bet1Amount", bet1, 1000);
+
+  $("b2q10").onclick = ()=>setAmount("bet2Amount", bet2, 10);
+  $("b2q100").onclick = ()=>setAmount("bet2Amount", bet2, 100);
+  $("b2q1000").onclick = ()=>setAmount("bet2Amount", bet2, 1000);
+
+  setInterval(tick, 250);
+  // no scroll: bars auto-truncate
+}
+
+init();
+</script>
+</body>
+</html>
