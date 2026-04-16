@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bars Prototype</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --panel: #0f172a;
+      --line: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --sky: #38bdf8;
+      --emerald: #34d399;
+      --amber: #fbbf24;
+      --red: #ef4444;
+      --green: #22c55e;
+      --violet: #a855f7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #0f172a, #020617 55%);
+      color: var(--text);
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 44px; line-height: 1; font-weight: 900; letter-spacing: -0.03em; }
+    .eyebrow { color: #7dd3fc; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 8px; }
+    .sub { color: var(--muted); margin-top: 8px; font-size: 14px; }
+    .status { min-width: 320px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--line); border-radius: 20px; padding: 14px 16px; }
+    .status .label, .card-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.25em; }
+    .status .value { margin-top: 6px; font-size: 14px; color: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; }
+    .panel { background: rgba(15, 23, 42, 0.82); border: 1px solid var(--line); border-radius: 28px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .section-title { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    button {
+      border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px; background: #1e293b;
+      color: var(--text); font-weight: 700; cursor: pointer; transition: 0.15s ease;
+    }
+    button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-sky { background: rgba(14, 165, 233, 0.16); border-color: rgba(56, 189, 248, 0.35); color: #bae6fd; }
+    .btn-green { background: #34d399; border-color: #34d399; color: #052e16; }
+    .mode.active { background: var(--amber); border-color: #fcd34d; color: #111827; }
+
+    .board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .cell {
+      position: relative; aspect-ratio: 1 / 1; border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)), #1e293b;
+      color: #f8fafc; border: 1px solid #334155; display: flex; align-items: center; justify-content: center;
+      user-select: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -10px 24px rgba(0,0,0,0.18);
+      overflow: hidden; transition: 0.18s ease;
+    }
+    .cell .num { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; opacity: 0.95; transform: translateY(-1px); }
+    .cell .money { font-size: 32px; line-height: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.28)); }
+    .cell::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: 0.18s ease; }
+    .cell.selected {
+      background: radial-gradient(circle at top, rgba(125,211,252,0.28), rgba(56,189,248,0.08) 60%, transparent 100%), #16324c;
+      border-color: #7dd3fc; box-shadow: 0 0 0 2px rgba(125,211,252,0.18), inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 24px rgba(56,189,248,0.12);
+      transform: translateY(-1px);
+    }
+    .cell.selected::after { opacity: 1; box-shadow: inset 0 0 0 1px rgba(224,242,254,0.4); }
+    .cell.drawn {
+      background: radial-gradient(circle at 35% 30%, rgba(251,191,36,0.18), transparent 55%), #2a3342;
+      border-color: #fcd34d; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(251,191,36,0.08);
+    }
+    .cell.drawn .money { animation: pop 0.32s ease; }
+    .cell.hit {
+      background: radial-gradient(circle at 35% 30%, rgba(16,185,129,0.36), transparent 58%), #153c32;
+      border: 3px solid #6ee7b7; box-shadow: 0 0 0 3px rgba(34,197,94,0.22), 0 14px 26px rgba(16,185,129,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
+      transform: translateY(-2px);
+    }
+    .cell.hit::after { opacity: 1; box-shadow: inset 0 0 0 2px rgba(209,250,229,0.35); }
+    .cell.revealing { animation: cellPulse 0.65s ease-in-out infinite alternate; }
+    @keyframes cellPulse { from { filter: brightness(1); } to { filter: brightness(1.12); } }
+    @keyframes pop { 0% { transform: scale(0.82); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+    .stat { background: rgba(2, 6, 23, 0.55); border: 1px solid var(--line); border-radius: 18px; padding: 14px; }
+    .stat .value { margin-top: 8px; font-size: 30px; font-weight: 900; }
+    .stat.final .value { color: #fde68a; }
+
+    .wheel-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; }
+    .segment {
+      position: relative; aspect-ratio: 1 / 1; border-radius: 12px; border: 1px solid transparent; display: flex;
+      align-items: center; justify-content: center; font-weight: 900; font-size: 14px; transition: 0.08s ease; transform: translateZ(0);
+    }
+    .segment.active { transform: scale(1.06); box-shadow: 0 0 0 3px rgba(251,191,36,0.65), 0 0 22px rgba(251,191,36,0.3); z-index: 2; }
+    .segment.hit-final { animation: finalPulse 0.6s ease 2; }
+    @keyframes finalPulse { 0% { transform: scale(1); } 50% { transform: scale(1.12); } 100% { transform: scale(1.06); } }
+
+    .m-0 { background: rgba(239,68,68,0.88); color: white; border-color: #fca5a5; }
+    .m-1 { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
+    .m-2 { background: rgba(34,197,94,0.88); color: white; border-color: #86efac; }
+    .m-5 { background: rgba(168,85,247,0.88); color: white; border-color: #d8b4fe; }
+    .m-10 { background: #fbbf24; color: #111827; border-color: #fde68a; }
+
+    .box { background: rgba(2, 6, 23, 0.55); border: 1px solid var(--line); border-radius: 18px; padding: 14px; margin-top: 16px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .chip { display: inline-flex; border-radius: 999px; padding: 8px 12px; font-size: 14px; font-weight: 900; border: 1px solid transparent; }
+    .payline { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 10px; }
+    .payline strong { color: #f8fafc; min-width: 58px; }
+    .payline span { color: #94a3b8; }
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .toggle-title {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      font-weight: 800;
+    }
+    .toggle-group {
+      display: inline-flex;
+      background: rgba(2, 6, 23, 0.75);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .mode {
+      border-radius: 999px;
+      padding: 9px 16px;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+    .mode[data-mode="on"].active { background: var(--amber); border-color: #fcd34d; color: #111827; }
+    .mode[data-mode="off"].active { background: #6b7280; border-color: #9ca3af; color: white; }
+    .mode[data-mode="manual"].active { background: var(--emerald); border-color: #6ee7b7; color: #052e16; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 50;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(760px, 100%);
+      max-height: 80vh;
+      overflow: auto;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .modal-title {
+      font-size: 22px;
+      font-weight: 900;
+    }
+    .close-btn {
+      min-width: auto;
+      padding: 8px 12px;
+    }
+
+    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) {
+      .wrap { padding: 16px; }
+      h1 { font-size: 36px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .cell .num { font-size: 24px; }
+      .wheel-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">Prototype</div>
+        <h1>Bars</h1>
+        <div class="sub">Pick up to 5 numbers, then optionally apply the 100-slot wheel multiplier.</div>
+      </div>
+      <div class="status">
+        <div class="label">Status</div>
+        <div class="value" id="statusText">Pick up to 5 numbers to start.</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="panel">
+        <div class="section-head">
+          <div>
+            <div class="card-label">Board</div>
+            <div class="section-title">20 Numbers</div>
+          </div>
+          <div class="controls">
+            <button id="paytableBtn">Paytable</button>
+            <button class="btn-sky" id="autoPickBtn">Auto Pick 5</button>
+            <button id="clearBtn">Clear</button>
+            <button class="btn-green" id="playBtn" disabled>Play</button>
+          </div>
+        </div>
+
+        <div class="toggle-wrap">
+          <div class="toggle-title">Wheel</div>
+          <div class="toggle-group">
+            <button class="mode active" data-mode="on">On</button>
+            <button class="mode" data-mode="off">Off</button>
+            <button class="mode" data-mode="manual">Manual</button>
+          </div>
+        </div>
+
+        <div class="board" id="board"></div>
+
+        <div class="stats">
+          <div class="stat"><div class="card-label">Selected</div><div class="value" id="selectedCount">0</div></div>
+          <div class="stat"><div class="card-label">Hits</div><div class="value" id="hitsCount">0</div></div>
+          <div class="stat"><div class="card-label">Base Payout</div><div class="value" id="basePayout">0x</div></div>
+          <div class="stat final"><div class="card-label">Final Payout</div><div class="value" id="finalPayout">0x</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <div>
+            <div class="card-label">Wheel</div>
+            <div class="section-title">100 Slots</div>
+          </div>
+          <div class="stat" style="min-width: 120px; margin-top: 0;">
+            <div class="card-label">Last Spin</div>
+            <div class="value" id="lastSpin">—</div>
+          </div>
+        </div>
+
+        <div class="wheel-grid" id="wheel"></div>
+
+        <div class="box">
+          <div class="card-label">Recent Wheel Results</div>
+          <div class="chips" id="history"><span style="color:#94a3b8; font-size:14px;">No spins yet.</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="paytableModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="card-label">Details</div>
+          <div class="modal-title">Paytable</div>
+        </div>
+        <button class="close-btn" id="closeModalBtn">Close</button>
+      </div>
+      <div id="paytables"></div>
+    </div>
+  </div>
+
+  <script>
+    const BOARD_NUMBERS = Array.from({ length: 20 }, (_, i) => i + 1);
+    const DRAW_COUNT = 5;
+    const MAX_PICKS = 5;
+    const WHEEL_SEGMENTS = [
+      ...Array(22).fill(0),
+      ...Array(70).fill(1),
+      ...Array(5).fill(2),
+      ...Array(2).fill(5),
+      10
+    ];
+    const PAYOUT_TABLE = {
+      1: { 0: 0, 1: 3.92 },
+      2: { 0: 0, 1: 1.2, 2: 9.62 },
+      3: { 0: 0, 1: 0.8, 2: 2.5, 3: 32.22 },
+      4: { 0: 0, 1: 0.3, 2: 1.4, 3: 8.5, 4: 264.1 },
+      5: { 0: 0, 1: 0.15, 2: 1.51, 3: 3, 4: 42, 5: 1000 }
+    };
+
+    const state = {
+      selected: [],
+      wheelMode: 'on',
+      drawn: [],
+      hits: 0,
+      basePayout: 0,
+      finalPayout: 0,
+      wheelMultiplier: null,
+      spinHistory: [],
+      activeIndex: null,
+      isRevealing: false,
+      isSpinning: false
+    };
+
+    const boardEl = document.getElementById('board');
+    const wheelEl = document.getElementById('wheel');
+    const paytablesEl = document.getElementById('paytables');
+    const statusEl = document.getElementById('statusText');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const hitsCountEl = document.getElementById('hitsCount');
+    const basePayoutEl = document.getElementById('basePayout');
+    const finalPayoutEl = document.getElementById('finalPayout');
+    const lastSpinEl = document.getElementById('lastSpin');
+    const historyEl = document.getElementById('history');
+    const playBtn = document.getElementById('playBtn');
+    const paytableBtn = document.getElementById('paytableBtn');
+    const paytableModal = document.getElementById('paytableModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+
+    function sampleUnique(source, count) {
+      const pool = source.slice();
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool.slice(0, count).sort((a, b) => a - b);
+    }
+
+    function formatMultiplier(value) {
+      if (value === null || value === undefined) return '—';
+      if (Number.isInteger(value)) return 'x' + value;
+      return 'x' + String(value);
+    }
+
+    function classForMultiplier(value) {
+      if (value === 0) return 'm-0';
+      if (value === 1) return 'm-1';
+      if (value === 2) return 'm-2';
+      if (value === 5) return 'm-5';
+      return 'm-10';
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function resetRoundDisplay() {
+      state.drawn = [];
+      state.hits = 0;
+      state.basePayout = 0;
+      state.finalPayout = 0;
+      state.wheelMultiplier = null;
+      state.activeIndex = null;
+      state.isRevealing = false;
+      state.isSpinning = false;
+    }
+
+    function renderBoard() {
+      const selectedSet = new Set(state.selected);
+      const drawnSet = new Set(state.drawn);
+      boardEl.innerHTML = '';
+      BOARD_NUMBERS.forEach((n) => {
+        const btn = document.createElement('button');
+        btn.className = 'cell';
+        if (state.isRevealing) btn.classList.add('revealing');
+        if (selectedSet.has(n)) btn.classList.add('selected');
+        if (drawnSet.has(n)) btn.classList.add('drawn');
+        if (drawnSet.has(n) && selectedSet.has(n)) btn.classList.add('hit');
+        btn.innerHTML = drawnSet.has(n)
+          ? '<span class="money">💰</span>'
+          : '<span class="num">' + n + '</span>';
+        btn.addEventListener('click', () => togglePick(n));
+        boardEl.appendChild(btn);
+      });
+    }
+
+    function renderWheel() {
+      wheelEl.innerHTML = '';
+      WHEEL_SEGMENTS.forEach((value, index) => {
+        const segment = document.createElement('div');
+        segment.className = 'segment ' + classForMultiplier(value);
+        if (state.activeIndex === index) segment.classList.add('active');
+        if (state.wheelMultiplier !== null && state.activeIndex === index && !state.isSpinning) segment.classList.add('hit-final');
+        segment.textContent = formatMultiplier(value);
+        wheelEl.appendChild(segment);
+      });
+    }
+
+    function renderPaytables() {
+      paytablesEl.innerHTML = '';
+      Object.keys(PAYOUT_TABLE).forEach((pick) => {
+        const row = document.createElement('div');
+        row.className = 'payline';
+        const strong = document.createElement('strong');
+        strong.textContent = 'Pick ' + pick;
+        row.appendChild(strong);
+        Object.entries(PAYOUT_TABLE[pick]).forEach(([hit, payout]) => {
+          const span = document.createElement('span');
+          span.textContent = hit + ' hit: ' + formatMultiplier(payout);
+          row.appendChild(span);
+        });
+        paytablesEl.appendChild(row);
+      });
+    }
+
+    function renderHistory() {
+      historyEl.innerHTML = '';
+      if (state.spinHistory.length === 0) {
+        const empty = document.createElement('span');
+        empty.style.color = '#94a3b8';
+        empty.style.fontSize = '14px';
+        empty.textContent = 'No spins yet.';
+        historyEl.appendChild(empty);
+        return;
+      }
+      state.spinHistory.forEach((value) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip ' + classForMultiplier(value);
+        chip.textContent = formatMultiplier(value);
+        historyEl.appendChild(chip);
+      });
+    }
+
+    function renderStats() {
+      selectedCountEl.textContent = state.selected.length;
+      hitsCountEl.textContent = state.hits;
+      basePayoutEl.textContent = formatMultiplier(state.basePayout);
+      if ((state.wheelMode === 'on' || state.wheelMode === 'manual') && state.basePayout > 0 && (state.isSpinning || state.wheelMultiplier === null)) {
+      finalPayoutEl.textContent = '—';
+    } else {
+      finalPayoutEl.textContent = formatMultiplier(state.finalPayout);
+    }
+      lastSpinEl.textContent = formatMultiplier(state.wheelMultiplier);
+      playBtn.disabled = state.selected.length === 0 || state.isRevealing || state.isSpinning;
+      playBtn.textContent = state.isRevealing ? 'Revealing' : (state.isSpinning ? 'Spinning' : 'Play');
+    }
+
+    function renderAll() {
+      renderBoard();
+      renderWheel();
+      renderHistory();
+      renderStats();
+    }
+
+    function togglePick(value) {
+      if (state.isRevealing || state.isSpinning) return;
+      resetRoundDisplay();
+      if (state.selected.includes(value)) {
+        state.selected = state.selected.filter((n) => n !== value).sort((a, b) => a - b);
+      } else if (state.selected.length < MAX_PICKS) {
+        state.selected = state.selected.concat(value).sort((a, b) => a - b);
+      }
+      setStatus('Pick up to 5 numbers to start.');
+      renderAll();
+    }
+
+    function autoPick() {
+      if (state.isRevealing || state.isSpinning) return;
+      state.selected = sampleUnique(BOARD_NUMBERS, MAX_PICKS);
+      resetRoundDisplay();
+      setStatus('Auto Pick selected 5 numbers.');
+      renderAll();
+    }
+
+    function clearPicks() {
+      if (state.isRevealing || state.isSpinning) return;
+      state.selected = [];
+      resetRoundDisplay();
+      setStatus('Selections cleared.');
+      renderAll();
+    }
+
+    function animateWheelSpin(onDone) {
+      state.isSpinning = true;
+      const finalIndex = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
+      let step = 0;
+      const totalSteps = 38 + finalIndex;
+      const intervalMs = 22; // < 3s
+      renderAll();
+
+      const timer = setInterval(() => {
+        step += 1;
+        state.activeIndex = step % WHEEL_SEGMENTS.length;
+        renderWheel();
+        renderStats();
+        if (step >= totalSteps) {
+          clearInterval(timer);
+          state.activeIndex = finalIndex;
+          state.wheelMultiplier = WHEEL_SEGMENTS[finalIndex];
+          state.finalPayout = Number((state.basePayout * state.wheelMultiplier).toFixed(2));
+          state.spinHistory.unshift(state.wheelMultiplier);
+          state.spinHistory = state.spinHistory.slice(0, 8);
+          state.isSpinning = false;
+          renderAll();
+          onDone(state.wheelMultiplier);
+        }
+      }, intervalMs);
+    }
+
+    function settleRound() {
+      if (state.selected.length === 0 || state.isRevealing || state.isSpinning) return;
+      resetRoundDisplay();
+      state.isRevealing = true;
+      setStatus('Revealing the board...');
+      renderAll();
+
+      setTimeout(() => {
+        const draw = sampleUnique(BOARD_NUMBERS, DRAW_COUNT);
+        const selectedSet = new Set(state.selected);
+        const hitCount = draw.filter((n) => selectedSet.has(n)).length;
+        const base = (PAYOUT_TABLE[state.selected.length] || {})[hitCount] || 0;
+
+        state.drawn = draw;
+        state.hits = hitCount;
+        state.basePayout = base;
+        if (state.wheelMode === 'off' || base === 0) {
+          state.finalPayout = base;
+        } else {
+          state.finalPayout = 0;
+        }
+        state.isRevealing = false;
+
+        const summary = state.selected.length + ' Pick' + (state.selected.length > 1 ? 's' : '') +
+          ' • ' + hitCount + ' Hit' + (hitCount !== 1 ? 's' : '') +
+          ' • Base ' + formatMultiplier(base);
+
+        renderAll();
+        setStatus(summary);
+
+        const continueAfterReveal = () => {
+          if (state.wheelMode === 'off') {
+            setStatus(summary + ' • Wheel Off');
+            return;
+          }
+
+          if (base === 0) {
+            setStatus(summary + ' • No wheel spin');
+            return;
+          }
+
+          const beginSpin = () => {
+            setStatus(summary + ' • Spinning wheel...');
+            animateWheelSpin((multi) => {
+              setStatus(summary + ' • Wheel ' + formatMultiplier(multi) + ' • Final ' + formatMultiplier(state.finalPayout));
+            });
+          };
+
+          if (state.wheelMode === 'manual') {
+            const shouldSpin = window.confirm('Spin the Wheel?');
+            if (!shouldSpin) {
+              setStatus(summary + ' • Wheel skipped');
+              return;
+            }
+            beginSpin();
+            return;
+          }
+
+          beginSpin();
+        };
+
+        // Give the browser time to paint the revealed board and let the user see it
+        // before asking about the wheel in Manual mode or starting the spin in On mode.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setTimeout(continueAfterReveal, 700);
+          });
+        });
+      }, 520);
+    }
+
+    document.getElementById('autoPickBtn').addEventListener('click', autoPick);
+    document.getElementById('clearBtn').addEventListener('click', clearPicks);
+    document.getElementById('playBtn').addEventListener('click', settleRound);
+    paytableBtn.addEventListener('click', () => paytableModal.classList.add('open'));
+    closeModalBtn.addEventListener('click', () => paytableModal.classList.remove('open'));
+    paytableModal.addEventListener('click', (event) => {
+      if (event.target === paytableModal) paytableModal.classList.remove('open');
+    });
+    document.querySelectorAll('.mode').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (state.isRevealing || state.isSpinning) return;
+        state.wheelMode = btn.dataset.mode;
+        document.querySelectorAll('.mode').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        setStatus('Wheel mode set to ' + btn.textContent + '.');
+      });
+    });
+
+    renderPaytables();
+    renderAll();
+  </script>
+</body>
+</html>
