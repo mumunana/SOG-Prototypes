@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHAIN — Stake Originals</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c23;
+    --border: #1e2330;
+    --accent: #00e5a0;
+    --red: #ff4560;
+    --gold: #f5c842;
+    --text: #e8eaf0;
+    --muted: #4a5068;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  .game-wrap {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  .header { display: flex; align-items: center; gap: 12px; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 42px; letter-spacing: 4px; color: var(--accent); line-height: 1; }
+  .logo-sub { font-size: 11px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; }
+  .header-balance {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0 14px; height: 42px;
+  }
+  .hbal-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .hbal-sep { width: 1px; height: 16px; background: var(--border); }
+  .hbal-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); letter-spacing: 1px; line-height: 1; }
+
+  /* ── Multiplier strip ── */
+  .mult-strip {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .strip-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .mult-value { font-family: 'Bebas Neue', sans-serif; font-size: 52px; color: var(--accent); line-height: 1; letter-spacing: 2px; transition: color 0.2s; }
+
+  /* Mode toggle (replaces RTP badge) */
+  .mode-toggle {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    padding: 10px 20px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-btn.active {
+    background: rgba(0,229,160,0.12);
+    color: var(--accent);
+  }
+
+  /* ── Config panel ── */
+  .config-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .cfg-group { display: flex; align-items: center; gap: 10px; }
+  .cfg-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
+  .btn-row { display: flex; gap: 6px; }
+  .seg-btn {
+    width: 40px; height: 38px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); font-family: 'Space Mono', monospace;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: all 0.14s; display: flex; align-items: center; justify-content: center;
+  }
+  .seg-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .seg-btn.active { background: rgba(0,229,160,0.12); border-color: var(--accent); color: var(--accent); }
+  .op-btn {
+    height: 38px; padding: 0 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); font-family: 'Space Mono', monospace;
+    font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.14s;
+    display: flex; align-items: center; justify-content: center; min-width: 44px;
+  }
+  .op-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .op-btn.active { background: rgba(0,229,160,0.12); border-color: var(--accent); color: var(--accent); }
+  .op-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .cfg-divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
+
+  /* Turbo toggle */
+  .turbo-toggle { display: flex; align-items: center; gap: 10px; margin-left: auto; cursor: pointer; user-select: none; }
+  .turbo-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); transition: color 0.2s; }
+  .turbo-label.on { color: var(--gold); }
+  .turbo-track { width: 36px; height: 20px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); position: relative; transition: background 0.2s, border-color 0.2s; flex-shrink: 0; }
+  .turbo-track.on { background: rgba(245,200,66,0.15); border-color: var(--gold); box-shadow: 0 0 8px rgba(245,200,66,0.2); }
+  .turbo-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--muted); position: absolute; top: 2px; left: 2px; transition: transform 0.2s, background 0.2s; }
+  .turbo-track.on .turbo-thumb { transform: translateX(16px); background: var(--gold); }
+
+  /* ── Arena ── */
+  .arena {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 24px 20px;
+    min-height: 220px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+    position: relative; overflow: hidden;
+    transition: box-shadow 0.35s, border-color 0.35s;
+  }
+  .arena.win  { box-shadow: 0 0 32px rgba(0,229,160,0.35); border-color: rgba(0,229,160,0.28); }
+  .arena.lose { box-shadow: 0 0 28px rgba(255,69,96,0.3);  border-color: rgba(255,69,96,0.22); }
+  .arena.active-hilo { border-color: rgba(245,200,66,0.25); box-shadow: 0 0 20px rgba(245,200,66,0.1); }
+
+  .chain { display: flex; align-items: center; flex-wrap: nowrap; }
+
+  /* Die */
+  .die {
+    width: 72px; height: 72px; border-radius: 14px;
+    background: var(--surface2); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: border-color 0.25s, background 0.25s, box-shadow 0.25s; cursor: default;
+  }
+  .die.rolling { animation: spin 0.07s ease-in-out infinite; }
+  .die.win-die  { border-color: var(--accent); background: rgba(0,229,160,0.06); box-shadow: 0 0 14px rgba(0,229,160,0.22); }
+  .die.lose-die { border-color: var(--red);    background: rgba(255,69,96,0.05); box-shadow: 0 0 14px rgba(255,69,96,0.18); }
+  .die.active-die { border-color: var(--gold); background: rgba(245,200,66,0.07); box-shadow: 0 0 14px rgba(245,200,66,0.2); cursor: pointer; }
+  .die.selectable { border-color: var(--muted); cursor: pointer; }
+  .die.selectable:hover { border-color: var(--accent); background: rgba(0,229,160,0.05); }
+  @keyframes spin { 0%{transform:rotate(-4deg)scale(1.04)} 50%{transform:rotate(4deg)scale(0.96)} 100%{transform:rotate(-4deg)scale(1.04)} }
+  .die svg { width: 50px; height: 50px; display: block; }
+  .die-q { font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--muted); opacity:0.35; }
+
+  /* Op slot */
+  .op-slot {
+    width: 54px; height: 72px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .op-slot::before, .op-slot::after {
+    content:''; position:absolute; top:50%; left:0; right:0; height:1px; background:var(--border);
+  }
+  .op-slot::before { transform:translateY(-22px); }
+  .op-slot::after  { transform:translateY(22px); }
+  .op-glyph {
+    font-family:'Space Mono', monospace; font-size:30px; font-weight:700; color:var(--muted);
+    background:var(--surface); padding:0 2px; z-index:1; transition:color 0.25s; line-height:1; display:block;
+  }
+  .op-glyph.win-op  { color:var(--accent); }
+  .op-glyph.lose-op { color:var(--red); }
+  .op-glyph.gold-op { color:var(--gold); }
+
+  /* HiLo op picker — normal flow below chain */
+  .hilo-picker {
+    display: none;
+    align-items: center; justify-content: center;
+    gap: 8px; flex-wrap: wrap;
+    min-height: 44px;
+  }
+  .hilo-picker.visible { display: flex; }
+  .hilo-op-btn {
+    height: 38px; padding: 0 16px;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px;
+    cursor: pointer; transition: all 0.14s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .hilo-op-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .hilo-op-btn .hilo-mult { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .hilo-op-btn:hover .hilo-mult { color: var(--accent); }
+
+  /* Slide-in animation for new chain elements */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .chain-enter { animation: slideIn 0.25s ease-out forwards; }
+
+  /* Cashout banner — sits above chain as a row */
+  .cashout-banner {
+    display: none; align-items: center; gap: 10px;
+  }
+  .cashout-banner.visible { display: flex; }
+  .cashout-mult {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+    color: var(--gold); letter-spacing: 2px;
+  }
+  .cashout-btn {
+    height: 32px; padding: 0 14px;
+    background: var(--gold); border: none; border-radius: 8px;
+    color: #0a0c0f; font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 2px; cursor: pointer;
+    transition: all 0.14s;
+  }
+  .cashout-btn:hover { background: #ffd84a; }
+
+  /* Result tag */
+  .result-tag {
+    position: absolute; top: 14px; right: 18px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 3px;
+    opacity: 0; transition: opacity 0.25s; pointer-events: none;
+  }
+  .result-tag.show { opacity: 1; }
+  .result-tag.win  { color: var(--accent); }
+  .result-tag.lose { color: var(--red); }
+  .result-tag.cashout { color: var(--gold); }
+
+  /* ── Bet row ── */
+  .bet-row { display: flex; gap: 12px; align-items: flex-start; }
+  .bet-group { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .bet-wrap {
+    display: flex; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden; align-items: center; transition: border-color 0.14s;
+  }
+  .bet-wrap:focus-within { border-color: var(--accent); }
+  .bet-prefix { padding: 0 12px; color: var(--muted); font-size: 13px; border-right: 1px solid var(--border); height: 44px; display: flex; align-items: center; flex-shrink: 0; }
+  .bet-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'Space Mono', monospace;
+    font-size: 16px; font-weight: 700; padding: 0 14px; height: 44px; min-width: 0;
+  }
+  .bet-input::-webkit-outer-spin-button, .bet-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .bet-input[type=number] { -moz-appearance: textfield; }
+  .quick-row { display: flex; gap: 4px; }
+  .quick-btn {
+    flex: 1; height: 28px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--muted); font-family: 'Space Mono', monospace;
+    font-size: 10px; cursor: pointer; transition: all 0.12s;
+  }
+  .quick-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  .payout-group { width: 160px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .payout-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px;
+    min-height: 56px; display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  }
+  .payout-num { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--accent); letter-spacing: 1px; line-height: 1; }
+  .payout-chance { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+  /* ── Bet button ── */
+  .bet-btn {
+    width: 100%; height: 54px; background: var(--accent); border: none; border-radius: 12px;
+    color: #0a0c0f; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 4px;
+    cursor: pointer; transition: all 0.14s; position: relative; overflow: hidden;
+  }
+  .bet-btn::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .bet-btn:hover:not(:disabled) { background: #00ffb2; transform: translateY(-1px); box-shadow: 0 8px 22px rgba(0,229,160,0.32); }
+  .bet-btn:active:not(:disabled) { transform: translateY(0); }
+  .bet-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ── Fair bar ── */
+  .fair-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; gap: 12px;
+  }
+  .fair-left { display: flex; align-items: center; gap: 8px; font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .fair-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex-shrink: 0; }
+  .fair-hash { font-size: 9px; color: var(--muted); opacity: 0.5; font-family: 'Space Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px; }
+
+  /* HiLo idle arena — 6 selectable dice */
+  .hilo-idle-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: nowrap;
+  }
+  .hilo-idle-die {
+    width: 72px; height: 72px; border-radius: 14px;
+    border: 2px solid var(--border); background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+  .hilo-idle-die:hover { border-color: var(--accent); background: rgba(0,229,160,0.05); }
+  .hilo-idle-die.selected {
+    border-color: var(--gold); background: rgba(245,200,66,0.08);
+    box-shadow: 0 0 14px rgba(245,200,66,0.25);
+  }
+  .hilo-idle-die svg { width: 50px; height: 50px; display: block; }
+  .arena-hint {
+    font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase;
+    text-align: center;
+  }
+
+  /* HiLo op buttons in config panel */
+  .hilo-op-cfg-btn {
+    height: 38px; padding: 0 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.14s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    white-space: nowrap; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .hilo-op-cfg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .hilo-op-cfg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .hilo-op-cfg-btn .op-name { white-space: nowrap; }
+  .hilo-op-cfg-btn .op-sym { color: #ffffff; font-weight: 700; }
+  .hilo-op-cfg-btn .op-odds { font-size: 8px; color: var(--muted); font-family: 'Space Mono', monospace; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .hilo-op-cfg-btn:hover:not(:disabled) .op-odds { color: var(--accent); }
+  .hilo-op-cfg-btn:hover:not(:disabled) .op-sym { color: var(--accent); }
+  @media (max-width: 500px) {
+    .die { width: 58px; height: 58px; }
+    .die svg { width: 40px; height: 40px; }
+    .op-slot { width: 34px; }
+    .op-glyph { font-size: 44px; }
+    .logo { font-size: 32px; }
+    .cfg-divider { display: none; }
+    .bet-row { flex-direction: column; }
+    .payout-group { width: 100%; }
+    .fair-hash { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="game-wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">CHAIN</div>
+    <div class="logo-sub">Stake Originals</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+      <div class="turbo-toggle" onclick="toggleTurbo()">
+        <span class="turbo-label" id="turboLabel">Turbo</span>
+        <div class="turbo-track" id="turboTrack"><div class="turbo-thumb"></div></div>
+        <span style="font-size:12px">⚡</span>
+      </div>
+      <div class="header-balance">
+        <div class="hbal-label">Balance</div>
+        <div class="hbal-sep"></div>
+        <div class="hbal-val" id="balVal">$1,000.00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multiplier strip -->
+  <div class="mult-strip">
+    <div>
+      <div class="strip-label">Last Result</div>
+      <div class="mult-value" id="multVal">—</div>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeChain" onclick="setMode('chain')">Chain</button>
+      <button class="mode-btn" id="modeHilo" onclick="setMode('hilo')">HiLo</button>
+    </div>
+  </div>
+
+  <!-- Arena -->
+  <div class="arena" id="arena">
+    <div class="result-tag" id="resultTag"></div>
+    <div class="chain" id="chain"></div>
+    <div class="arena-hint" id="arenaHint"></div>
+    <div class="hilo-picker" id="hiloPicker"></div>
+  </div>
+
+  <!-- Config panel (below arena) -->
+  <div class="config-panel" id="configPanel">
+    <!-- Chain controls -->
+    <div id="chainControls" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;width:100%;">
+      <div class="cfg-group">
+        <div class="cfg-label">Dice</div>
+        <div class="btn-row" id="countBtns">
+          <button class="seg-btn active" data-n="2">2</button>
+          <button class="seg-btn" data-n="3">3</button>
+          <button class="seg-btn" data-n="4">4</button>
+          <button class="seg-btn" data-n="5">5</button>
+          <button class="seg-btn" data-n="6">6</button>
+        </div>
+      </div>
+      <div class="cfg-divider"></div>
+      <div class="cfg-group">
+        <div class="cfg-label">Rule</div>
+        <div class="btn-row" id="opBtns">
+          <button class="op-btn active" data-op="<">&lt;</button>
+          <button class="op-btn" data-op="<=">≤</button>
+          <button class="op-btn" data-op="=">=</button>
+          <button class="op-btn" data-op=">=">≥</button>
+          <button class="op-btn" data-op=">">&gt;</button>
+        </div>
+      </div>
+    </div>
+    <!-- HiLo controls: operator buttons only -->
+    <div id="hiloControls" style="display:none;align-items:center;gap:16px;flex-wrap:wrap;width:100%;">
+      <div class="cfg-group" style="flex:1;">
+        <div class="cfg-label">Next is</div>
+        <div class="btn-row" id="hiloOpBtns" style="flex:1;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bet row -->
+  <div class="bet-row">
+    <div class="bet-group">
+      <div class="field-label">Bet Amount</div>
+      <div class="bet-wrap">
+        <div class="bet-prefix">$</div>
+        <input class="bet-input" id="betInput" type="number" value="1.00" min="0.01" step="0.01">
+      </div>
+      <div class="quick-row">
+        <button class="quick-btn" onclick="multBet(0.5)">1/2</button>
+        <button class="quick-btn" onclick="multBet(2)">2x</button>
+        <button class="quick-btn" onclick="setBet(1)">$1</button>
+        <button class="quick-btn" onclick="setBet(10)">$10</button>
+        <button class="quick-btn" onclick="setBet(100)">$100</button>
+      </div>
+    </div>
+    <div class="payout-group" id="payoutGroup">
+      <div class="field-label">Win Payout</div>
+      <div class="payout-box">
+        <div class="payout-num" id="payoutVal">$2.35</div>
+        <div class="payout-chance" id="chanceVal">41.67% win chance</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="bet-btn" id="betBtn" onclick="onMainBtn()">BET</button>
+
+  <!-- Provably fair -->
+  <div class="fair-bar">
+    <div class="fair-left"><div class="fair-dot"></div>Provably Fair</div>
+    <div class="fair-hash" id="fairInfo">—</div>
+  </div>
+
+</div>
+<script>
+// ═══════════════════════════════════════════════════
+// TRUE RANDOM
+// ═══════════════════════════════════════════════════
+function trueRandDie() {
+  const arr = new Uint8Array(1);
+  let v;
+  do { crypto.getRandomValues(arr); v = arr[0]; } while (v >= 252);
+  return (v % 6) + 1;
+}
+function randomHex(n) {
+  const arr = new Uint8Array(n);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function sha256hex(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// CHAIN MATH — exact enumeration
+// ═══════════════════════════════════════════════════
+const _pc = {};
+function chainProb(n, op) {
+  const k = n + op;
+  if (_pc[k] !== undefined) return _pc[k];
+  const total = Math.pow(6, n);
+  let wins = 0;
+  const r = new Array(n).fill(1);
+  function go(pos) {
+    if (pos === n) {
+      for (let i = 0; i < n - 1; i++) {
+        const a = r[i], b = r[i+1];
+        if (op === '<'  && a >= b) return;
+        if (op === '<=' && a > b)  return;
+        if (op === '>'  && a <= b) return;
+        if (op === '>=' && a < b)  return;
+        if (op === '='  && a !== b) return;
+      }
+      wins++; return;
+    }
+    for (let v = 1; v <= 6; v++) { r[pos] = v; go(pos+1); }
+  }
+  go(0);
+  return (_pc[k] = wins / total);
+}
+function chainMult(n, op) { return 0.98 / chainProb(n, op); }
+
+// ═══════════════════════════════════════════════════
+// HILO MATH
+// "op" means: next_die op current_die  (e.g. next > current = next is higher)
+// available ops per die value follow spec:
+//   d=1: only > and = (can't go lower)
+//   d=6: only < and = (can't go higher)
+//   d=2..5: all 5 ops
+// ═══════════════════════════════════════════════════
+function hiloAvailableOps(d) {
+  // current [op] next — exclude impossible (0 wins) and trivially certain (6/6 wins)
+  if (d === 1) return ['<', '='];    // '<=' excluded (always true, trivial)
+  if (d === 6) return ['>', '='];    // '>=' excluded (always true, trivial)
+  return ['<', '<=', '=', '>=', '>'];
+}
+function hiloWins(d, op) {
+  // count next values where: d [op] next  (current [op] next, reading left→right)
+  let w = 0;
+  for (let n = 1; n <= 6; n++) {
+    if (op === '<'  && d < n)  w++;
+    if (op === '<=' && d <= n) w++;
+    if (op === '='  && d === n) w++;
+    if (op === '>=' && d >= n) w++;
+    if (op === '>'  && d > n)  w++;
+  }
+  return w;
+}
+function hiloProb(d, op) { return hiloWins(d, op) / 6; }
+// First step: 0.98 RTP; subsequent steps: 1.0 RTP (fair compound)
+function hiloMult1(d, op) { const p = hiloProb(d, op); return p > 0 ? 0.98 / p : Infinity; }
+function hiloMultN(d, op) { const p = hiloProb(d, op); return p > 0 ? 1.0 / p : Infinity; }
+
+const OP_LABELS = { '<': '↑', '<=': '↑=', '=': '=', '>=': '↓=', '>': '↓' };
+const OP_NAMES   = { '<': 'Higher', '<=': 'Higher or Equal', '=': 'Equal', '>=': 'Lower or Equal', '>': 'Lower' };
+const OP_SYMBOLS = { '<': '<', '<=': '≤', '=': '=', '>=': '≥', '>': '>' };
+
+// ═══════════════════════════════════════════════════
+// PIPS
+// ═══════════════════════════════════════════════════
+const PIPS = {
+  1:[[36,36]],2:[[20,20],[52,52]],3:[[20,20],[36,36],[52,52]],
+  4:[[20,20],[52,20],[20,52],[52,52]],5:[[20,20],[52,20],[36,36],[20,52],[52,52]],
+  6:[[20,18],[52,18],[20,36],[52,36],[20,54],[52,54]],
+};
+function dieSVG(face, col) {
+  const c = col || '#6b7a99';
+  const dots = PIPS[face].map(([cx,cy]) => `<circle cx="${cx}" cy="${cy}" r="5" fill="${c}"/>`).join('');
+  return `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">${dots}</svg>`;
+}
+function dieSmallSVG(face, col) {
+  const c = col || '#6b7a99';
+  const dots = PIPS[face].map(([cx,cy]) => `<circle cx="${cx}" cy="${cy}" r="5" fill="${c}"/>`).join('');
+  return `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">${dots}</svg>`;
+}
+
+// ═══════════════════════════════════════════════════
+// GLOBAL STATE
+// ═══════════════════════════════════════════════════
+let mode = 'chain'; // 'chain' | 'hilo'
+let diceCount = 2, chainOp = '<';
+let balance = 1000;
+let nonce = 0, busy = false, turbo = false;
+let serverSeed = randomHex(32), serverHash = '';
+sha256hex(serverSeed).then(h => serverHash = h);
+
+// HiLo state
+let hiloActive = false;    // in-progress hilo round (op picked, die locked)
+let hiloArmed = false;     // bet placed, waiting for first op pick
+let hiloFirstDie = 1;      // player-chosen starting die (1–6)
+let hiloDiceSelected = false;
+let hiloDices = [];
+let hiloOps = [];
+let hiloCumulMult = 1.0;
+let hiloBet = 0;
+
+// ═══════════════════════════════════════════════════
+// MODE SWITCHING
+// ═══════════════════════════════════════════════════
+let hiloResetTimer = null;
+
+function setMode(m) {
+  if (hiloActive || hiloArmed) return;
+  if (hiloResetTimer) { clearTimeout(hiloResetTimer); hiloResetTimer = null; }
+  mode = m;
+  document.getElementById('modeChain').classList.toggle('active', m === 'chain');
+  document.getElementById('modeHilo').classList.toggle('active', m === 'hilo');
+  document.getElementById('chainControls').style.display = m === 'chain' ? 'flex' : 'none';
+  document.getElementById('hiloControls').style.display  = m === 'hilo'  ? 'flex' : 'none';
+  document.getElementById('payoutGroup').style.display   = m === 'chain' ? 'flex' : 'none';
+
+  if (m === 'chain') { buildChainIdle(); updateChainDisplay(); }
+  else               { buildHiloIdle(); buildHiloOpButtons(); updateHiloDisplay(); }
+  hideResult();
+  document.getElementById('arena').className = 'arena';
+}
+
+// ═══════════════════════════════════════════════════
+// CHAIN — BUILD & ROLL
+// ═══════════════════════════════════════════════════
+function buildChainArena(faces, state) {
+  const chain = document.getElementById('chain');
+  chain.innerHTML = '';
+  const symMap = { '<': '<', '<=': '≤', '=': '=', '>=': '≥', '>': '>' };
+  const sym = symMap[chainOp] || chainOp;
+  const col = state === 'win' ? '#00e5a0' : state === 'lose' ? '#ff4560' : '#6b7a99';
+  for (let i = 0; i < diceCount; i++) {
+    const die = document.createElement('div');
+    die.className = 'die' +
+      (state === 'rolling' ? ' rolling' : '') +
+      (state === 'win'  ? ' win-die'  : '') +
+      (state === 'lose' ? ' lose-die' : '');
+    die.innerHTML = faces ? dieSVG(faces[i], col) : '<div class="die-q">?</div>';
+    chain.appendChild(die);
+    if (i < diceCount - 1) {
+      const slot = document.createElement('div');
+      slot.className = 'op-slot';
+      const g = document.createElement('div');
+      g.className = 'op-glyph' +
+        (state === 'win' ? ' win-op' : state === 'lose' ? ' lose-op' : '');
+      g.textContent = sym;
+      slot.appendChild(g);
+      chain.appendChild(slot);
+    }
+  }
+  hidePicker();
+}
+
+function buildChainIdle() { buildChainArena(null, 'idle'); document.getElementById('arenaHint').textContent = ''; }
+
+async function doChainRoll() {
+  const bet = parseFloat(document.getElementById('betInput').value);
+  if (!bet || bet <= 0 || bet > balance) { shakeArena(); return; }
+  busy = true;
+  setBtnState('disabled');
+  hideResult(); nonce++;
+  const clientSeed = randomHex(16);
+  document.getElementById('arena').className = 'arena';
+
+  if (!turbo) {
+    buildChainArena(null, 'idle');
+    for (let f = 0; f < 14; f++) {
+      await delay(65);
+      buildChainArena(Array.from({length: diceCount}, trueRandDie), 'rolling');
+    }
+    await delay(80);
+  }
+
+  const faces = Array.from({length: diceCount}, trueRandDie);
+  let won = true;
+  for (let i = 0; i < diceCount - 1; i++) {
+    const a = faces[i], b = faces[i+1];
+    if (chainOp === '<'  && a >= b) { won = false; break; }
+    if (chainOp === '<=' && a > b)  { won = false; break; }
+    if (chainOp === '>'  && a <= b) { won = false; break; }
+    if (chainOp === '>=' && a < b)  { won = false; break; }
+    if (chainOp === '='  && a !== b) { won = false; break; }
+  }
+
+  const mult = chainMult(diceCount, chainOp);
+  const payout = won ? +(bet * mult).toFixed(2) : 0;
+  const profit = +(payout - bet).toFixed(2);
+  balance = +(balance + profit).toFixed(2);
+
+  buildChainArena(faces, won ? 'win' : 'lose');
+  document.getElementById('arena').className = 'arena ' + (won ? 'win' : 'lose');
+
+  const multEl = document.getElementById('multVal');
+  multEl.textContent = won ? mult.toFixed(2) + 'x' : '0x';
+  multEl.style.color = won ? 'var(--accent)' : 'var(--red)';
+
+  showResult(won ? 'win' : 'lose', won ? '+$' + profit.toFixed(2) : 'BUST');
+  updateStats(); updateFair(clientSeed);
+  serverSeed = randomHex(32); sha256hex(serverSeed).then(h => serverHash = h);
+
+  setTimeout(() => {
+    busy = false;
+    setBtnState('bet');
+  }, turbo ? 0 : 650);
+}
+
+// ═══════════════════════════════════════════════════
+// HILO — BUILD & LOGIC
+// ═══════════════════════════════════════════════════
+
+// Build the 6-die idle selector inside the arena
+function buildHiloIdle() {
+  const chain = document.getElementById('chain');
+  chain.innerHTML = '';
+  const row = document.createElement('div');
+  row.className = 'hilo-idle-row';
+  for (let d = 1; d <= 6; d++) {
+    const die = document.createElement('div');
+    die.className = 'hilo-idle-die' + (d === hiloFirstDie ? ' selected' : '');
+    die.innerHTML = dieSVG(d, d === hiloFirstDie ? '#f5c842' : '#6b7a99');
+    die.onclick = () => {
+      if (hiloActive) return;
+      hiloFirstDie = d;
+      if (hiloArmed) hiloDices[0] = d; // update starting die for op calculations
+      buildHiloIdle();
+      buildHiloOpButtons();
+      updateHiloDisplay();
+    };
+    row.appendChild(die);
+  }
+  chain.appendChild(row);
+
+  // Hint text
+  document.getElementById('arenaHint').textContent = hiloArmed
+    ? 'Bet placed — pick an operator below to roll'
+    : 'Start with...';
+  hidePicker();
+  if (!hiloArmed && !hiloActive) setBtnState('bet');}
+
+// Populate the op buttons in the config panel below arena
+function buildHiloOpButtons() {
+  const container = document.getElementById('hiloOpBtns');
+  container.innerHTML = '';
+  const currentDie = hiloDices.length > 0 ? hiloDices[hiloDices.length - 1] : hiloFirstDie;
+  const isFirst = hiloOps.length === 0;
+  const ops = hiloAvailableOps(currentDie);
+  ops.forEach(op => {
+    const p = hiloProb(currentDie, op);
+    if (p === 0) return;
+    const stepM = isFirst ? hiloMult1(currentDie, op) : hiloMultN(currentDie, op);
+    const totalM = hiloCumulMult * stepM;
+    const btn = document.createElement('button');
+    btn.className = 'hilo-op-cfg-btn';
+    btn.disabled = !hiloArmed;
+    const sym = `<span class="op-sym">${OP_SYMBOLS[op]}</span>`;
+    btn.innerHTML = `<span class="op-name">${OP_NAMES[op]} ${sym}</span><span class="op-odds">${totalM.toFixed(2)}x on win</span>`;
+    btn.onclick = () => hiloPickOp(op);
+    container.appendChild(btn);
+  });
+}
+
+function buildHiloRound(animateNew) {
+  const chain = document.getElementById('chain');
+  chain.innerHTML = '';
+  document.getElementById('arenaHint').textContent = '';
+  for (let i = 0; i < hiloDices.length; i++) {
+    const isLast = i === hiloDices.length - 1;
+    if (i > 0) {
+      const opIdx = i - 1;
+      const slot = document.createElement('div');
+      slot.className = 'op-slot' + (animateNew && opIdx === hiloOps.length - 1 ? ' chain-enter' : '');
+      const g = document.createElement('div');
+      g.className = 'op-glyph gold-op';
+      g.textContent = OP_LABELS[hiloOps[opIdx]];
+      slot.appendChild(g);
+      chain.appendChild(slot);
+    }
+    const die = document.createElement('div');
+    die.className = 'die' + (isLast ? ' active-die' : ' win-die') + (animateNew && isLast && i > 0 ? ' chain-enter' : '');
+    die.innerHTML = dieSVG(hiloDices[i], isLast ? '#f5c842' : '#00e5a0');
+    chain.appendChild(die);
+  }
+}
+
+function hidePicker() { document.getElementById('hiloPicker').classList.remove('visible'); }
+function hideCashout() { setBtnState('disabled'); }
+function showCashout() { setBtnState('cashout'); }
+
+async function startHiloRound() {
+  const bet = parseFloat(document.getElementById('betInput').value);
+  if (!bet || bet <= 0 || bet > balance) { shakeArena(); return; }
+  hiloBet = bet;
+  balance = +(balance - bet).toFixed(2);
+  updateStats();
+
+  hiloArmed = true;
+  hiloDices = [hiloFirstDie];
+  hiloOps = [];
+  hiloCumulMult = 1.0;
+
+  setBtnState('disabled');
+  buildHiloIdle();           // keep die picker visible, update hint
+  buildHiloOpButtons();      // enable op buttons now that we're armed
+  hideResult();
+  document.getElementById('arena').className = 'arena active-hilo';
+}
+
+async function hiloPickOp(op) {
+  if (!hiloArmed) return;
+
+  // First pick: lock die, arm the round properly
+  if (!hiloActive) {
+    hiloActive = true;
+    setBtnState('disabled');
+  }
+
+  const currentDie = hiloDices[hiloDices.length - 1];
+  const isFirst = hiloOps.length === 0;
+
+  // If still in idle (first op pick), switch arena from idle selector to chain view
+  if (isFirst) {
+    buildHiloRound(false);
+  }
+
+  // Disable op buttons during roll
+  document.querySelectorAll('.hilo-op-cfg-btn').forEach(b => b.disabled = true);
+  hideCashout();
+
+  // Animate: append op slot + spinning die
+  let nextDie;
+  if (!turbo) {
+    const chain = document.getElementById('chain');
+    const spinSlot = document.createElement('div');
+    spinSlot.className = 'op-slot chain-enter';
+    const spinG = document.createElement('div');
+    spinG.className = 'op-glyph gold-op';
+    spinG.textContent = OP_LABELS[op];
+    spinSlot.appendChild(spinG);
+    chain.appendChild(spinSlot);
+
+    const spinDie = document.createElement('div');
+    spinDie.className = 'die active-die rolling chain-enter';
+    spinDie.innerHTML = dieSVG(trueRandDie(), '#f5c842');
+    chain.appendChild(spinDie);
+
+    for (let f = 0; f < 8; f++) {
+      await delay(60);
+      spinDie.innerHTML = dieSVG(trueRandDie(), '#f5c842');
+    }
+    await delay(60);
+  }
+  nextDie = trueRandDie();
+
+  const satisfied =
+    (op === '<'  && currentDie < nextDie) ||
+    (op === '<=' && currentDie <= nextDie) ||
+    (op === '='  && currentDie === nextDie) ||
+    (op === '>=' && currentDie >= nextDie) ||
+    (op === '>'  && currentDie > nextDie);
+
+  const stepMult = isFirst ? hiloMult1(currentDie, op) : hiloMultN(currentDie, op);
+  hiloOps.push(op);
+  hiloDices.push(nextDie);
+
+  if (satisfied) {
+    hiloCumulMult = +(hiloCumulMult * stepMult).toFixed(4);
+    buildHiloRound(true);
+
+    document.getElementById('multVal').textContent = hiloCumulMult.toFixed(2) + 'x';
+    document.getElementById('multVal').style.color = 'var(--gold)';
+    document.getElementById('arena').className = 'arena active-hilo';
+
+    showCashout();
+    // Rebuild op buttons for new current die
+    buildHiloOpButtons();
+    // Re-enable them
+    document.querySelectorAll('.hilo-op-cfg-btn').forEach(b => b.disabled = false);
+    nonce++;
+    updateFair(randomHex(16));
+  } else {
+    hiloCumulMult = 0;
+    buildHiloRound(true);
+    const dies = document.querySelectorAll('#chain .die');
+    if (dies.length) {
+      const last = dies[dies.length - 1];
+      last.className = 'die lose-die';
+      last.innerHTML = dieSVG(nextDie, '#ff4560');
+    }
+    document.getElementById('arena').className = 'arena lose';
+    document.getElementById('multVal').textContent = '0x';
+    document.getElementById('multVal').style.color = 'var(--red)';
+    showResult('lose', 'BUST');
+    endHiloRound(false);
+  }
+}
+
+function hiloCashout() {
+  if (!hiloActive) return;
+  const payout = +(hiloBet * hiloCumulMult).toFixed(2);
+  const profit  = +(payout - hiloBet).toFixed(2);
+  balance = +(balance + payout).toFixed(2);
+  hidePicker(); hideCashout();
+  document.getElementById('arena').className = 'arena win';
+  document.getElementById('multVal').textContent = hiloCumulMult.toFixed(2) + 'x';
+  document.getElementById('multVal').style.color = 'var(--accent)';
+  showResult('cashout', '+$' + profit.toFixed(2));
+  updateStats();
+  endHiloRound(true);
+}
+
+function endHiloRound(won) {
+  hiloActive = false;
+  hiloArmed = false;
+  updateStats();
+  hiloResetTimer = setTimeout(() => {
+    hiloResetTimer = null;
+    setBtnState('bet');
+    hiloFirstDie = hiloDices[hiloDices.length - 1] || hiloFirstDie;
+    if (mode === 'hilo') {
+      buildHiloIdle();
+      buildHiloOpButtons();
+      updateHiloDisplay();
+    }
+    document.getElementById('arena').className = 'arena';
+    hideResult();
+    hidePicker();
+  }, turbo ? 400 : 1800);
+}
+
+// ═══════════════════════════════════════════════════
+// UNIFIED BET ENTRY
+// ═══════════════════════════════════════════════════
+function setBtnState(state) {
+  // state: 'bet' | 'cashout' | 'disabled'
+  const btn = document.getElementById('betBtn');
+  if (state === 'cashout') {
+    btn.textContent = 'CASHOUT';
+    btn.style.background = 'var(--gold)';
+    btn.style.color = '#0a0c0f';
+    btn.disabled = false;
+  } else if (state === 'bet') {
+    btn.textContent = 'BET';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.disabled = false;
+  } else {
+    btn.textContent = 'BET';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.disabled = true;
+  }
+}
+
+function onMainBtn() {
+  if (hiloActive) { hiloCashout(); return; }
+  if (busy) return;
+  if (mode === 'chain') { doChainRoll(); return; }
+  if (hiloArmed) return; // already armed, waiting for op
+  startHiloRound();
+}
+
+// ═══════════════════════════════════════════════════
+// DISPLAY UPDATES
+// ═══════════════════════════════════════════════════
+function updateChainDisplay() {
+  const p = chainProb(diceCount, chainOp);
+  const m = chainMult(diceCount, chainOp);
+  const bet = parseFloat(document.getElementById('betInput').value) || 0;
+  document.getElementById('chanceVal').textContent = (p * 100).toFixed(2) + '% win chance';
+  document.getElementById('payoutVal').textContent = '$' + (bet * m).toFixed(2);
+}
+
+function updateHiloDisplay() {
+  // Show prob/payout for current first die + all ops (show a representative — e.g. '>' from current die)
+  // Just show: pick a die, pick an op to see payout
+  const d = hiloFirstDie;
+  const ops = hiloAvailableOps(d).filter(op => hiloProb(d, op) > 0);
+  if (ops.length === 0) return;
+  // Show best-risk op (middle) for display
+  const op = ops[Math.floor(ops.length / 2)];
+  const p = hiloProb(d, op);
+  const m = hiloMult1(d, op);
+  const bet = parseFloat(document.getElementById('betInput').value) || 0;
+  document.getElementById('chanceVal').textContent = 'Select op to see odds';
+  document.getElementById('payoutVal').textContent = '$' + (bet * m).toFixed(2) + '+';
+}
+
+function updatePayout() {
+  if (mode === 'chain') updateChainDisplay();
+  else updateHiloDisplay();
+}
+
+function updateStats() {
+  document.getElementById('balVal').textContent =
+    '$' + balance.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function updateFair(cs) {
+  document.getElementById('fairInfo').textContent =
+    'server_hash: ' + serverHash.slice(0,20) + '… | client: ' + cs + ' | nonce: ' + nonce;
+}
+
+// ═══════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════
+function showResult(type, text) {
+  const tag = document.getElementById('resultTag');
+  tag.className = 'result-tag show ' + type;
+  tag.textContent = text;
+  setTimeout(() => tag.className = 'result-tag ' + type, 2200);
+}
+function hideResult() { document.getElementById('resultTag').className = 'result-tag'; }
+function shakeArena() {
+  const a = document.getElementById('arena');
+  a.style.transform = 'translateX(-8px)';
+  setTimeout(() => a.style.transform = 'translateX(8px)', 80);
+  setTimeout(() => a.style.transform = '', 160);
+}
+
+function setBet(v) { document.getElementById('betInput').value = v.toFixed(2); updatePayout(); }
+function multBet(m) {
+  const cur = parseFloat(document.getElementById('betInput').value) || 1;
+  document.getElementById('betInput').value = Math.max(0.01, +(cur * m).toFixed(2));
+  updatePayout();
+}
+
+function toggleTurbo() {
+  turbo = !turbo;
+  document.getElementById('turboTrack').classList.toggle('on', turbo);
+  document.getElementById('turboLabel').classList.toggle('on', turbo);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════
+document.getElementById('countBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn || busy) return;
+  diceCount = +btn.dataset.n;
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+  buildChainIdle();
+  updateChainDisplay();
+});
+document.getElementById('opBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.op-btn');
+  if (!btn || busy) return;
+  chainOp = btn.dataset.op;
+  document.querySelectorAll('.op-btn').forEach(b => b.classList.toggle('active', b === btn));
+  buildChainIdle();
+  updateChainDisplay();
+});
+document.getElementById('betInput').addEventListener('input', updatePayout);
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+for (let n = 2; n <= 6; n++) ['<', '<=', '=', '>=', '>'].forEach(op => chainProb(n, op));
+buildHiloIdle();
+buildHiloOpButtons();
+buildChainIdle();
+updateChainDisplay();
+updateStats();
+</script>
+</body>
+</html>
