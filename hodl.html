@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HODL — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#070910; --surface:#0f1117; --panel:#13161f; --border:#1e2230; --border2:#2a2f42;
+  --text:#e8eaf0; --muted:#5a607a; --muted2:#7b829e;
+  --tile-bg:#141720; --tile-bdr:#1e2230; --surface2:#1e2230;
+  --green:#48bb78; --red:#fc8181;
+  --accent:#48bb78;
+  --gold:#f5a623; --gold-bg:rgba(245,166,35,0.18); --gold-bdr:#f5a623;
+}
+
+html { background:var(--bg); overscroll-behavior:none; }
+body {
+  overscroll-behavior:none; background:var(--bg); color:var(--text);
+  font-family:'Syne',sans-serif; min-height:100vh;
+  display:flex; justify-content:center;
+  background-image:radial-gradient(ellipse 80% 35% at 40% 0%, rgba(72,187,120,0.035) 0%, transparent 55%);
+}
+
+/* ── Layout ── */
+.layout {
+  width:100%; max-width:980px;
+  display:grid; grid-template-columns:272px 1fr;
+  gap:20px; padding:24px 16px 48px; align-items:start;
+}
+
+/* ── Left column ── */
+.left { display:flex; flex-direction:column; gap:10px; position:sticky; top:24px; }
+
+.game-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.game-title { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+.game-title em { color:var(--gold); font-style:normal; }   /* O in gold */
+.pf-tag {
+  display:flex; align-items:center; gap:5px;
+  font-family:'DM Mono',monospace; font-size:10px; color:var(--muted2);
+  border:1px solid var(--border); border-radius:20px; padding:4px 9px;
+}
+.pf-dot { width:5px; height:5px; border-radius:50%; background:var(--green); box-shadow:0 0 6px rgba(72,187,120,0.7); }
+
+.panel-box { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; }
+.panel-label {
+  font-family:'DM Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--muted); margin-bottom:8px;
+}
+
+/* Balance */
+.bal-row { display:flex; justify-content:space-between; align-items:center; }
+.bal-lbl { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); }
+.bal-val { font-family:'DM Mono',monospace; font-size:15px; font-weight:500; }
+
+/* Bet input */
+.bet-row { display:flex; align-items:center; gap:6px; }
+.bet-adj {
+  width:34px; height:38px; border-radius:8px; border:1px solid var(--border2);
+  background:var(--panel); color:var(--muted2); font-family:'DM Mono',monospace;
+  font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .12s; flex-shrink:0; user-select:none;
+}
+.bet-adj:hover { color:var(--text); background:var(--border); }
+.bet-field {
+  flex:1; background:var(--panel); border:1px solid var(--border2); border-radius:8px;
+  padding:0 10px; height:38px; color:var(--text); font-family:'DM Mono',monospace;
+  font-size:15px; font-weight:500; text-align:center; outline:none; transition:border-color .12s; width:100%;
+}
+.bet-field:focus { border-color:var(--green); }
+.bet-field::-webkit-outer-spin-button, .bet-field::-webkit-inner-spin-button { -webkit-appearance:none; }
+.bet-field[type=number] { -moz-appearance:textfield; }
+.bet-presets { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:8px; }
+.preset-btn {
+  padding:5px 0; border-radius:7px; border:1px solid var(--border);
+  background:var(--panel); color:var(--muted2); font-family:'DM Mono',monospace;
+  font-size:11px; cursor:pointer; text-align:center; transition:all .12s;
+}
+.preset-btn:hover { border-color:var(--border2); color:var(--text); }
+
+/* Sell Target */
+.sell-row { display:flex; align-items:center; gap:6px; }
+.sell-field {
+  flex:1; background:var(--panel); border:1px solid var(--border2); border-radius:8px;
+  padding:0 10px; height:38px; color:var(--text); font-family:'DM Mono',monospace;
+  font-size:15px; font-weight:500; text-align:center; outline:none; transition:border-color .12s, color .12s; width:100%;
+}
+.sell-field:focus { border-color:var(--green); }
+.sell-field.has-target { border-color:rgba(72,187,120,0.5); color:var(--green); }
+.sell-clear {
+  width:38px; height:38px; border-radius:8px; border:1px solid var(--border2);
+  background:var(--panel); color:var(--muted2); font-family:'DM Mono',monospace;
+  font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .12s; flex-shrink:0; user-select:none; line-height:1;
+}
+.sell-clear:hover { color:var(--text); background:var(--border); }
+.sell-presets { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:8px; }
+.sell-preset {
+  padding:5px 0; border-radius:7px; border:1px solid var(--border);
+  background:var(--panel); color:var(--muted2); font-family:'DM Mono',monospace;
+  font-size:11px; cursor:pointer; text-align:center; transition:all .12s;
+}
+.sell-preset:hover { border-color:rgba(72,187,120,0.4); color:var(--green); }
+.sell-preset.on { border-color:rgba(72,187,120,0.5); color:var(--green); background:rgba(72,187,120,0.07); }
+
+/* Mode toggle */
+.mode-toggle { display:flex; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:3px; }
+.mode-btn {
+  flex:1; height:36px; border-radius:9px; border:none; cursor:pointer;
+  font-family:'Syne',sans-serif; font-size:14px; font-weight:700;
+  transition:background .15s, color .15s, box-shadow .15s;
+  background:transparent; color:var(--muted2);
+}
+.mode-btn.active { background:var(--surface2); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,0.4); }
+#autoBetsWrap { display:none; margin-top:8px; }
+#autoBetsWrap.show { display:block; }
+
+/* Action button */
+.btn-play {
+  width:100%; height:50px; border-radius:12px; border:none;
+  font-family:'Syne',sans-serif; font-size:16px; font-weight:800;
+  cursor:pointer; letter-spacing:.02em; touch-action:manipulation;
+  position:relative; overflow:hidden;
+  transition:background .18s, transform .1s, box-shadow .18s, color .18s, border-color .18s, opacity .15s;
+}
+.btn-play::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,0.16) 0%,transparent 55%);
+  pointer-events:none;
+}
+.btn-play:active:not(:disabled) { transform:translateY(1px) scale(0.995); }
+.btn-play:disabled { opacity:.32; cursor:not-allowed; }
+
+/* Button states */
+.btn-play.s-bet { background:var(--gold); color:#070910; }
+.btn-play.s-bet:hover:not(:disabled) { background:#f7b83a; box-shadow:0 4px 22px rgba(245,166,35,0.42); transform:translateY(-1px); }
+
+.btn-play.s-sell { background:var(--green); color:#030e06; animation:sellPulse 1.6s ease-in-out infinite; }
+.btn-play.s-sell:hover:not(:disabled) { background:#68d391; animation:none; box-shadow:0 4px 22px rgba(72,187,120,0.5); transform:translateY(-1px); }
+@keyframes sellPulse { 0%,100%{box-shadow:0 0 0 0 rgba(72,187,120,0.4)} 50%{box-shadow:0 0 0 6px rgba(72,187,120,0)} }
+
+.btn-play.s-cancel { background:#e03e3e; color:#fff; }
+.btn-play.s-cancel:hover:not(:disabled) { background:#f04040; box-shadow:0 4px 22px rgba(224,62,62,0.4); transform:translateY(-1px); }
+
+.btn-play.s-queue { background:#3a6fdf; color:#fff; }
+.btn-play.s-queue:hover:not(:disabled) { background:#4a7ff0; box-shadow:0 4px 22px rgba(58,111,223,0.4); transform:translateY(-1px); }
+
+.btn-play.s-stop { background:#e53e3e; color:#fff; }
+.btn-play.s-stop:hover:not(:disabled) { background:#fc4f4f; box-shadow:0 4px 22px rgba(229,62,62,0.4); transform:translateY(-1px); }
+
+/* History */
+.hist-strip { display:flex; gap:5px; flex-wrap:wrap; min-height:22px; }
+.hist-chip { padding:3px 8px; border-radius:5px; font-family:'DM Mono',monospace; font-size:11px; font-weight:500; }
+.hist-chip.g    { background:rgba(72,187,120,0.14); color:var(--green); }
+.hist-chip.r    { background:rgba(252,129,129,0.10); color:var(--red); }
+.hist-chip.d    { background:rgba(255,255,255,0.04); color:var(--muted2); }
+.hist-chip.gold { background:rgba(245,166,35,0.14);  color:var(--gold); }
+.hist-empty { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); }
+
+/* ── Right column ── */
+.right { display:flex; flex-direction:column; gap:12px; }
+
+/* Phase bar */
+.phase-bar {
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:11px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.phase-left { display:flex; align-items:center; gap:10px; min-width:0; }
+.phase-pill {
+  flex-shrink:0; padding:4px 10px; border-radius:20px;
+  font-family:'DM Mono',monospace; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.08em; transition:background .25s, color .25s;
+}
+.phase-pill.cd { background:rgba(255,255,255,0.05); color:var(--muted2); }
+.phase-pill.live { background:rgba(72,187,120,0.15); color:var(--green); }
+.phase-pill.crash { background:rgba(252,129,129,0.15); color:var(--red); }
+.phase-info { font-family:'DM Mono',monospace; font-size:12px; color:var(--muted2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Arena */
+.arena {
+  background:var(--surface); border:1px solid var(--border); border-radius:18px;
+  height:380px; position:relative; overflow:hidden;
+  transition:box-shadow .4s, border-color .4s;
+}
+.arena.live  { border-color:rgba(72,187,120,0.18); }
+.arena.crash { box-shadow:0 0 32px rgba(252,129,129,0.15); border-color:rgba(252,129,129,0.22); }
+.arena.sold  { box-shadow:0 0 28px rgba(72,187,120,0.2); border-color:rgba(72,187,120,0.28); }
+.arena.idle  { }
+
+/* Canvas fills arena */
+#chart { position:absolute; inset:0; width:100%; height:100%; display:block; transition:opacity .4s; }
+.arena.idle #chart  { opacity:.3; }
+.arena.live #chart  { opacity:1; }
+.arena.crash #chart { opacity:1; }
+.arena.sold #chart  { opacity:1; }
+
+/* Countdown overlay */
+.cd-overlay {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:6px;
+  pointer-events:none; transition:opacity .35s;
+}
+.cd-overlay.hide { opacity:0; }
+.cd-label { font-family:'DM Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+.cd-num { font-size:80px; font-weight:800; letter-spacing:-4px; color:var(--muted2); line-height:1; }
+
+/* Center mult overlay */
+.mult-overlay {
+  position:absolute; top:14px; left:16px;
+  display:flex; flex-direction:row; align-items:center; gap:10px;
+  pointer-events:none; transition:opacity .35s;
+}
+.mult-overlay.hide { opacity:0; }
+.mult-val {
+  font-size:38px; font-weight:800; letter-spacing:-1.5px; line-height:1;
+  color:var(--muted2); transition:color .2s;
+  text-shadow:0 1px 12px rgba(0,0,0,0.95);
+}
+.mult-val.up   { color:var(--green); }
+.mult-val.down { color:var(--red); }
+.payout-pill {
+  font-family:'DM Mono',monospace; font-size:12px;
+  background:rgba(7,9,16,0.72); border:1px solid var(--border);
+  padding:3px 10px; border-radius:20px; color:var(--muted2);
+  transition:color .2s, border-color .2s; backdrop-filter:blur(6px);
+}
+.payout-pill.active { color:var(--text); border-color:var(--border2); }
+
+/* Result tag — top right */
+.result-tag {
+  position:absolute; top:14px; right:18px;
+  font-family:'DM Mono',monospace; font-size:12px; font-weight:600; letter-spacing:.06em;
+  padding:4px 11px; border-radius:20px;
+  opacity:0; transition:opacity .25s; pointer-events:none;
+}
+.result-tag.show { opacity:1; }
+.result-tag.g      { background:rgba(72,187,120,0.15); color:var(--green); }
+.result-tag.r      { background:rgba(252,129,129,0.15); color:var(--red); }
+.result-tag.ingame { background:rgba(58,111,223,0.15);  color:#6b9fff; }
+
+/* Float badges */
+.badges { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.badge {
+  position:absolute;
+  font-family:'DM Mono',monospace; font-size:12px; font-weight:600;
+  padding:3px 9px; border-radius:6px; white-space:nowrap;
+  animation:floatUp 1.3s cubic-bezier(.22,.61,.36,1) forwards;
+}
+.badge.u { background:rgba(72,187,120,0.18); color:var(--green); }
+.badge.d { background:rgba(252,129,129,0.13); color:var(--red); }
+@keyframes floatUp {
+  0%   { opacity:0; transform:translateY(8px); }
+  15%  { opacity:1; transform:translateY(0); }
+  65%  { opacity:1; transform:translateY(-18px); }
+  100% { opacity:0; transform:translateY(-40px); }
+}
+
+/* Live stats row */
+.stats-row {
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:11px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.stat-block { display:flex; flex-direction:column; gap:2px; }
+.stat-label { font-family:'DM Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+.stat-val { font-family:'DM Mono',monospace; font-size:15px; font-weight:600; color:var(--text); }
+.stat-val.pos { color:var(--green); }
+.stat-val.neg { color:var(--red); }
+.stat-val.gold { color:var(--gold); }
+
+/* ── Mobile: dissolve columns, re-order all children ── */
+@media(max-width:680px) {
+  .layout {
+    display:flex; flex-direction:column;
+    gap:8px; padding:12px 12px max(env(safe-area-inset-bottom,0px) + 80px, 100px);
+    max-width:100%;
+  }
+  /* dissolve both columns so children float directly into layout flow */
+  .left, .right { display:contents; }
+  .left > *, .right > * { width:100%; box-sizing:border-box; }
+
+  /* ── Mobile order: arena first, then controls ── */
+  .game-header    { order:5; }
+  #box-balance    { order:7; }      /* just below title, above arena */
+  .arena          { order:10; height:240px; }
+  .phase-bar      { order:15; }
+  #actionBtn      { order:30; }
+  #box-betamt     { order:35; }
+  #box-selltarget { order:40; }
+  #autoBetsWrap   { order:45; }
+  #box-mode       { order:50; }
+  #box-history    { order:52; }     /* just below mode toggle */
+  .stats-row      { order:55; }
+
+  /* ── Size tweaks ── */
+  .mult-val { font-size:28px; letter-spacing:-1px; }
+  .cd-num   { font-size:52px; }
+  .phase-bar { padding:8px 12px; }
+  .stats-row { padding:8px 14px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ══ LEFT COLUMN ══════════════════════════════════════════════════════════ -->
+  <div class="left">
+    <div class="game-header">
+      <div class="game-title">H<em>O</em>DL</div>
+      <div class="pf-tag"><div class="pf-dot"></div>Probably Fair</div>
+    </div>
+
+    <!-- Balance -->
+    <div class="panel-box" id="box-balance">
+      <div class="bal-row">
+        <span class="bal-lbl">Balance</span>
+        <span class="bal-val" id="balEl">$3,000.00</span>
+      </div>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="panel-box" id="box-mode" style="padding:4px;">
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeManual">Manual</button>
+        <button class="mode-btn"        id="modeAuto">Auto</button>
+      </div>
+    </div>
+
+    <!-- Bet Amount -->
+    <div class="panel-box" id="box-betamt">
+      <div class="panel-label">Bet Amount</div>
+      <div class="bet-row">
+        <button class="bet-adj" id="halfBtn">½</button>
+        <input  class="bet-field" id="betInput" type="number" value="10.00" min="0.10" step="0.10">
+        <button class="bet-adj" id="dblBtn">2×</button>
+      </div>
+      <div class="bet-presets">
+        <button class="preset-btn" data-v="1">$1</button>
+        <button class="preset-btn" data-v="10">$10</button>
+        <button class="preset-btn" data-v="100">$100</button>
+        <button class="preset-btn" data-v="1000">$1K</button>
+      </div>
+    </div>
+
+    <!-- Sell Target -->
+    <div class="panel-box" id="box-selltarget">
+      <div class="panel-label">Sell Target</div>
+      <div class="sell-row">
+        <input class="sell-field" id="sellInput" value="∞" autocomplete="off">
+        <button class="sell-clear" id="sellClear" title="Reset to ∞">∞</button>
+      </div>
+      <div class="sell-presets">
+        <button class="sell-preset" data-t="1.5">1.5×</button>
+        <button class="sell-preset" data-t="2">2×</button>
+        <button class="sell-preset" data-t="5">5×</button>
+        <button class="sell-preset" data-t="10">10×</button>
+      </div>
+    </div>
+
+    <!-- Auto bets -->
+    <div class="panel-box" id="autoBetsWrap">
+      <div class="panel-label">Number of Rounds</div>
+      <div class="bet-row">
+        <button class="bet-adj" id="betsHalf">½</button>
+        <input  class="bet-field" id="betsEl" value="∞" style="font-size:17px;">
+        <button class="bet-adj" id="betsDouble">2×</button>
+      </div>
+      <div class="bet-presets" style="margin-top:6px;">
+        <button class="preset-btn" data-b="10">10</button>
+        <button class="preset-btn" data-b="25">25</button>
+        <button class="preset-btn" data-b="50">50</button>
+        <button class="preset-btn" data-b="∞">∞</button>
+      </div>
+    </div>
+
+    <!-- Action button -->
+    <button class="btn-play s-bet" id="actionBtn">Bet</button>
+
+    <!-- History -->
+    <div class="panel-box" id="box-history">
+      <div class="panel-label">History</div>
+      <div class="hist-strip" id="histStrip">
+        <span class="hist-empty">No rounds yet</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT COLUMN ═════════════════════════════════════════════════════════ -->
+  <div class="right">
+
+    <!-- Phase bar -->
+    <div class="phase-bar">
+      <div class="phase-left">
+        <div class="phase-pill cd" id="phasePill">COUNTDOWN</div>
+        <div class="phase-info"   id="phaseInfo">Next round in 5s</div>
+      </div>
+    </div>
+
+    <!-- Arena -->
+    <div class="arena idle" id="arena">
+      <canvas id="chart"></canvas>
+
+      <!-- Countdown overlay -->
+      <div class="cd-overlay" id="cdOverlay">
+        <div class="cd-label">Next round in</div>
+        <div class="cd-num" id="cdNum">5</div>
+      </div>
+
+      <!-- Multiplier + payout overlay -->
+      <div class="mult-overlay hide" id="multOverlay">
+        <div class="mult-val" id="multVal">1.00×</div>
+        <div class="payout-pill" id="payoutPill">—</div>
+      </div>
+
+      <!-- Result tag -->
+      <div class="result-tag" id="resultTag"></div>
+
+      <!-- Float badges -->
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <!-- Session stats -->
+    <div class="stats-row">
+      <div class="stat-block">
+        <div class="stat-label">Rounds</div>
+        <div class="stat-val" id="statRounds">0</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Wagered</div>
+        <div class="stat-val" id="statWagered">—</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">P&amp;L</div>
+        <div class="stat-val" id="statPnl">—</div>
+      </div>
+      <div class="stat-block" style="text-align:right;">
+        <div class="stat-label">Best Sell</div>
+        <div class="stat-val gold" id="statBest">—</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Provably Fair RNG ──────────────────────────────────────────────────────
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return new Uint8Array(buf);
+}
+function toU52(bytes) {
+  let r = 0n;
+  for (let i = 0; i < 7; i++) r = (r << 8n) | BigInt(bytes[i]);
+  r >>= 4n;
+  return Number(r) / (2 ** 52);
+}
+async function rngU(ss, cs, nonce, step, tag) {
+  return toU52(await sha256(`${ss}|${cs}|${nonce}|${step}|${tag}`));
+}
+function randomHex(n) {
+  const a = new Uint8Array(n);
+  crypto.getRandomValues(a);
+  return [...a].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const SS = randomHex(32);   // server seed (hidden)
+const CS = randomHex(16);   // client seed
+
+// ─── Constants (from trade.html) ────────────────────────────────────────────
+const STEP_NORMAL   = 2000;
+const STEP_TURBO    = 400;
+const BETWEEN_NORMAL = 5000;
+const BETWEEN_TURBO  = 2000;
+const MAX_COLS  = 50;
+const MAX_MULT  = 1_000_000;
+const P0A = 0.02;   // crash prob on first step
+const QD  = 0.20;   // crash prob on subsequent steps
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let balance    = 3000.00;
+let autoMode   = false;
+let autoRunning = false;
+let autoRemaining = Infinity;
+
+// Sell target
+let sellTarget = Infinity;  // Infinity = manual only
+
+// Bet state (one per round)
+const B = {
+  queued:   false,    // placed for next round (not yet live)
+  active:   false,    // live this round
+  cashedOut:false,    // has been cashed out
+  amount:   10.00,
+  mult:     null,     // cashout multiplier
+};
+
+// Round state
+const R = {
+  phase:  'countdown',  // 'countdown' | 'running' | 'ended'
+  nonce:  0,
+  step:   0,
+  cols:   [],           // array of multiplier values; 0 = crash
+  opens:  [],           // open value for each candle
+  cdLeft: BETWEEN_NORMAL,
+  timer:  null,
+  reason: '',
+  hadBet: false,        // whether player had an active bet this round
+  sellStep: null,       // col index where player sold (null = not sold yet)
+};
+
+// Session stats
+const S = { rounds:0, wagered:0, pnl:0, best:0 };
+const history = [];   // round history chips
+
+// ─── DOM refs ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const balEl      = $('balEl');
+const actionBtn  = $('actionBtn');
+const betInput   = $('betInput');
+const sellInput  = $('sellInput');
+const phasePill  = $('phasePill');
+const phaseInfo  = $('phaseInfo');
+const arena      = $('arena');
+const cdOverlay  = $('cdOverlay');
+const cdNum      = $('cdNum');
+const multOverlay= $('multOverlay');
+const multVal    = $('multVal');
+const payoutPill = $('payoutPill');
+const resultTag  = $('resultTag');
+const badgesEl   = $('badges');
+const histStrip  = $('histStrip');
+const canvas     = $('chart');
+const ctx        = canvas.getContext('2d');
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const fmt2  = x => x.toFixed(2);
+const fmtM  = x => fmt2(x) + '×';
+const fmtD  = x => '$' + Math.abs(x).toFixed(2);
+const getBetAmt = () => Math.max(0.10, parseFloat(betInput.value) || 10);
+
+function getSellTarget() {
+  const v = sellInput.value.trim();
+  if (!v || v === '∞') return Infinity;
+  const n = parseFloat(v);
+  return isNaN(n) || n <= 1 ? Infinity : n;
+}
+
+// ─── Balance ─────────────────────────────────────────────────────────────────
+function setBal(x) { balance = x; balEl.textContent = '$' + balance.toFixed(2); }
+
+// ─── Action button ───────────────────────────────────────────────────────────
+function updateBtn() {
+  const btn = actionBtn;
+  const live = R.phase === 'running';
+  const crashed = R.cols.length > 0 && R.cols.at(-1) === 0;
+
+  if (B.active && live && !B.cashedOut && !crashed) {
+    btn.textContent = 'Sell';
+    btn.className = 'btn-play s-sell';
+    btn.disabled = false;
+  } else if (B.queued) {
+    btn.textContent = 'Cancel';
+    btn.className = 'btn-play s-cancel';
+    btn.disabled = false;
+  } else if (live) {
+    btn.textContent = 'Bet Next Round';
+    btn.className = 'btn-play s-queue';
+    btn.disabled = false;
+  } else if (autoMode) {
+    if (autoRunning) {
+      btn.textContent = 'Stop';
+      btn.className = 'btn-play s-stop';
+    } else {
+      btn.textContent = 'Start';
+      btn.className = 'btn-play s-bet';
+    }
+    btn.disabled = false;
+  } else {
+    btn.textContent = 'Bet';
+    btn.className = 'btn-play s-bet';
+    btn.disabled = false;
+  }
+
+  betInput.disabled = B.active || B.queued;
+}
+
+// ─── Phase UI ────────────────────────────────────────────────────────────────
+function updatePhaseUI() {
+  const p = R.phase;
+  if (p === 'countdown') {
+    phasePill.textContent = 'COUNTDOWN';
+    phasePill.className   = 'phase-pill cd';
+    const s = Math.max(0, Math.ceil(R.cdLeft / 1000));
+    phaseInfo.textContent = `Next round in ${s}s`;
+    cdNum.textContent = s;
+    arena.className = 'arena idle';
+  } else if (p === 'running') {
+    phasePill.textContent = 'LIVE';
+    phasePill.className   = 'phase-pill live';
+    phaseInfo.textContent = `Step ${R.cols.length} / ${MAX_COLS}`;
+    const crashed = R.cols.length > 0 && R.cols.at(-1) === 0;
+    arena.className = crashed ? 'arena crash' : 'arena live';
+  } else {
+    // ended
+    if (R.reason === 'CRASH') {
+      phasePill.textContent = 'CRASHED';
+      phasePill.className   = 'phase-pill crash';
+      arena.className = 'arena crash';
+    } else {
+      phasePill.textContent = 'ENDED';
+      phasePill.className   = 'phase-pill cd';
+      arena.className = 'arena idle';
+    }
+    const peak = R.cols.filter(x => x > 0);
+    const m = peak.length ? Math.max(...peak) : 0;
+    phaseInfo.textContent = m > 0 ? `Peak: ${fmtM(m)}` : 'Crashed';
+  }
+}
+
+// ─── Multiplier + payout display ─────────────────────────────────────────────
+function updateMultDisplay(m, prevM) {
+  if (m === null || m === undefined) {
+    multVal.textContent = '1.00×';
+    multVal.className = 'mult-val';
+    payoutPill.textContent = '—';
+    payoutPill.className = 'payout-pill';
+    return;
+  }
+  if (m <= 0) {
+    multVal.textContent = '0.00×';
+    multVal.className = 'mult-val down';
+    payoutPill.textContent = '—';
+    payoutPill.className = 'payout-pill';
+    return;
+  }
+  multVal.textContent = fmtM(m);
+  const isUp = prevM === undefined || m >= prevM;
+  multVal.className = 'mult-val ' + (isUp ? 'up' : 'down');
+
+  if (B.active && !B.cashedOut) {
+    payoutPill.textContent = 'Payout: ' + fmtD(B.amount * m);
+    payoutPill.className = 'payout-pill active';
+  } else if (B.cashedOut && B.mult !== null && B.mult > 0) {
+    payoutPill.textContent = 'Payout: ' + fmtD(B.amount * B.mult);
+    payoutPill.className = 'payout-pill';
+  } else {
+    payoutPill.textContent = '—';
+    payoutPill.className = 'payout-pill';
+  }
+}
+
+// ─── Canvas Chart ─────────────────────────────────────────────────────────────
+function drawChart() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  if (W === 0 || H === 0) return;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const cols  = R.cols;
+  const opens = R.opens;
+  if (!cols.length) return;
+
+  const PL = 10, PR = 56, PT = 36, PB = 26;  // PR wider for y-axis labels
+  const chartW = W - PL - PR;
+
+  // Fixed candle geometry — tight spacing like a real chart
+  const SLOT = 19;   // px per candle slot (body + gap on each side)
+  const BODY = 13;   // body width in px
+  const GAP  = (SLOT - BODY) / 2;  // gap on each side = 3px
+
+  // Visible window: left-anchored, scroll when full
+  const maxFit = Math.max(1, Math.floor(chartW / SLOT));
+  const start  = Math.max(0, cols.length - maxFit);
+  const vCols  = cols.slice(start);
+  const vOpens = opens.slice(start);
+
+  const hasCrash = vCols.includes(0);
+
+  // Y range — always include 1.0 baseline; when crashed, always include 0
+  const posVals = [...vCols.filter(x => x > 0), ...vOpens.filter(x => x > 0), 1];
+  const rawMin  = Math.min(...posVals);
+  const rawMax  = Math.max(...posVals);
+  const span    = Math.max(rawMax - rawMin, rawMin * 0.3, 0.4);
+  const padV    = span * 0.18;
+  let yMin = hasCrash ? 0 : Math.max(0, rawMin - padV);
+  let yMax = rawMax + padV;
+  const st = getSellTarget();
+  if (st !== Infinity) yMax = Math.max(yMax, st * 1.06);
+
+  const innerH = H - PT - PB;
+  function toY(v) {
+    // Clamp to [0, yMax]; 0 maps to bottom of chart area
+    const cv = Math.max(0, v);
+    const frac = (cv - yMin) / (yMax - yMin);
+    return PT + (1 - frac) * innerH;
+  }
+  // Candle center X — left-anchored, no centering offset on partial fills
+  function toX(i) { return PL + i * SLOT + SLOT / 2; }
+
+  // ── Y-axis labels (right side) ──────────────────────────────────────────
+  ctx.font      = '10px "DM Mono",monospace';
+  ctx.textAlign = 'left';
+  const labelX  = W - PR + 6;
+  // Choose a few "nice" label values across the range
+  const labelStep = (() => {
+    const rough = (yMax - yMin) / 4;
+    const mag   = Math.pow(10, Math.floor(Math.log10(rough)));
+    for (const f of [1, 2, 2.5, 5, 10]) {
+      if (mag * f >= rough) return mag * f;
+    }
+    return rough;
+  })();
+  const firstLabel = Math.ceil(yMin / labelStep) * labelStep;
+  for (let v = firstLabel; v <= yMax; v += labelStep) {
+    const ly = toY(v);
+    if (ly < PT || ly > H - PB) continue;
+    // Skip labels within 12px of the baseline — it gets its own label
+    if (Math.abs(ly - toY(1)) < 12) continue;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.moveTo(PL, ly);
+    ctx.lineTo(W - PR, ly);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.fillText(v < 10 ? fmt2(v) + '×' : Math.round(v) + '×', labelX, ly + 3.5);
+  }
+
+  // ── 0.00× line — shown when round has a crash candle ──────────────────
+  if (hasCrash) {
+    const zeroY = toY(0);  // correct bottom position in the Y scale
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(252,129,129,0.45)';
+    ctx.lineWidth   = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.moveTo(PL, zeroY);
+    ctx.lineTo(W - PR, zeroY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(252,129,129,0.7)';
+    ctx.font      = '10px "DM Mono",monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('0.00×', labelX, zeroY - 3);
+  }
+
+  // ── Baseline 1.00× — the "0" reference, always prominent ──────────────
+  const base1Y = toY(1);
+  // Solid line, noticeably brighter than grid lines
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([]);
+  ctx.moveTo(PL, base1Y);
+  ctx.lineTo(W - PR, base1Y);
+  ctx.stroke();
+  // Label "0" on the right axis — overwrite any grid label at this position
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font      = '10px "DM Mono",monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('1.00×', labelX, base1Y + 3.5);
+  // Small left-side tick mark
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth   = 1.5;
+  ctx.moveTo(PL, base1Y);
+  ctx.lineTo(PL + 4, base1Y);
+  ctx.stroke();
+
+  // ── Sell target line ────────────────────────────────────────────────────
+  if (st !== Infinity) {
+    const tY = toY(st);
+    if (tY > PT - 12 && tY < H - PB + 12) {
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(72,187,120,0.55)';
+      ctx.lineWidth   = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.moveTo(PL, tY);
+      ctx.lineTo(W - PR, tY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(72,187,120,0.80)';
+      ctx.fillText(fmt2(st) + '×', labelX, tY + 3.5);
+      // green triangle marker
+      ctx.fillStyle = 'rgba(72,187,120,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(W - PR - 1, tY);
+      ctx.lineTo(W - PR + 4, tY - 4);
+      ctx.lineTo(W - PR + 4, tY + 4);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // ── Connector lines between consecutive candles ─────────────────────────
+  // Thin horizontal bridge at the shared open/close price level
+  for (let i = 1; i < vCols.length; i++) {
+    const prevClose = vCols[i - 1];
+    if (prevClose <= 0) continue;  // no connector out of a crash candle
+    const currOpen = vOpens[i];
+    if (currOpen <= 0) continue;
+    const connY = toY(prevClose);
+    const x1    = toX(i - 1) + BODY / 2;
+    const x2    = toX(i)     - BODY / 2;
+    if (x2 <= x1) continue;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth   = 1;
+    ctx.moveTo(x1, connY);
+    ctx.lineTo(x2, connY);
+    ctx.stroke();
+  }
+
+  // ── Candle bodies ───────────────────────────────────────────────────────
+  const G_FILL = 'rgba(72,187,120,0.75)';
+  const R_FILL = 'rgba(252,129,129,0.75)';
+  const G_STR  = '#48bb78';
+  const R_STR  = '#fc8181';
+
+  vCols.forEach((close, i) => {
+    const open   = vOpens[i];
+    const x      = toX(i);
+    const openY  = toY(open);
+    const closeY = toY(Math.max(0, close));   // crash (0) maps to toY(0) = bottom of scale
+    const isUp   = close > open;
+    const crash  = close <= 0;
+    const isLast = i === vCols.length - 1;
+
+    const fill = (crash || !isUp) ? R_FILL : G_FILL;
+    const str  = (crash || !isUp) ? R_STR  : G_STR;
+
+    const top   = Math.min(openY, closeY);
+    const bot   = Math.max(openY, closeY);
+    const bH    = Math.max(2, bot - top);
+    const x0    = x - BODY / 2;
+    const r     = Math.min(2, bH / 2);
+
+    if (isLast && R.phase === 'running') {
+      ctx.shadowColor = str;
+      ctx.shadowBlur  = 10;
+    }
+
+    ctx.fillStyle = fill;
+    ctx.beginPath(); ctx.roundRect(x0, top, BODY, bH, r); ctx.fill();
+
+    ctx.shadowBlur  = 0;
+    ctx.strokeStyle = str;
+    ctx.lineWidth   = 0.8;
+    ctx.beginPath(); ctx.roundRect(x0, top, BODY, bH, r); ctx.stroke();
+  });
+
+  // ── Buy / Sell tag markers ─────────────────────────────────────────────
+  function drawTag(text, cx, cy, fillClr, strokeClr, above) {
+    const FS = 9;
+    ctx.font = `600 ${FS}px "DM Mono",monospace`;
+    const tw = ctx.measureText(text).width;
+    const PH = 15, PW = tw + 10;
+    const bx = cx - PW / 2;
+    const by = above ? cy - PH - 4 : cy + 4;
+    ctx.fillStyle = fillClr;
+    ctx.beginPath(); ctx.roundRect(bx, by, PW, PH, 3); ctx.fill();
+    ctx.strokeStyle = strokeClr;
+    ctx.lineWidth   = 0.8;
+    ctx.beginPath(); ctx.roundRect(bx, by, PW, PH, 3); ctx.stroke();
+    ctx.fillStyle  = strokeClr;
+    ctx.textAlign  = 'center';
+    ctx.fillText(text, cx, by + PH / 2 + FS / 2 - 1);
+  }
+
+  // Buy tag — only when player has a bet this round; gold, at 1.00× open of first candle
+  if (R.hadBet && start === 0 && vCols.length > 0) {
+    const bx = toX(0);
+    const by = toY(1.0);
+    const firstUp = vCols[0] > 1;
+    drawTag('Buy', bx, by, 'rgba(245,166,35,0.18)', '#f5a623', !firstUp);
+  }
+
+  // Sell tag — only when player has sold; gold, at cashout candle close
+  if (R.hadBet && R.sellStep !== null) {
+    const si = R.sellStep - start;
+    if (si >= 0 && si < vCols.length) {
+      const sx = toX(si);
+      const sv = R.cols[R.sellStep];
+      const sy = sv > 0 ? toY(sv) : toY(0);
+      const up = sv > (R.opens[R.sellStep] ?? 1);
+      drawTag('Sell', sx, sy, 'rgba(245,166,35,0.18)', '#f5a623', up);
+    }
+  }
+}
+
+// ─── Float badge ─────────────────────────────────────────────────────────────
+let _badgeX = 38;
+function spawnBadge(pct) {
+  const b   = document.createElement('div');
+  const isUp = pct >= 0;
+  b.className = 'badge ' + (isUp ? 'u' : 'd');
+  b.textContent = (isUp ? '+' : '') + pct.toFixed(1) + '%';
+  // stagger horizontally to avoid overlap
+  _badgeX = _badgeX === 38 ? 55 : (_badgeX === 55 ? 45 : 38);
+  const y = 28 + Math.random() * 26;
+  b.style.left = _badgeX + '%';
+  b.style.top  = y + '%';
+  badgesEl.appendChild(b);
+  setTimeout(() => b.remove(), 1400);
+}
+
+// ─── Cashout ─────────────────────────────────────────────────────────────────
+function cashOut(isAuto) {
+  if (R.phase !== 'running') return;
+  if (!B.active || B.cashedOut) return;
+  const last = R.cols.at(-1);
+  if (!last || last <= 0) return;
+
+  B.cashedOut = true;
+  B.mult      = last;
+  B.active    = false;
+  R.sellStep  = R.cols.length - 1;   // record which candle the sell happened on
+
+  const payout = B.amount * last;
+  setBal(balance + payout);
+
+  S.pnl += payout - B.amount;
+  if (last > S.best) S.best = last;
+
+  // Result tag
+  resultTag.textContent = isAuto ? 'AUTO SOLD' : 'SOLD';
+  resultTag.className   = 'result-tag show g';
+  arena.className       = 'arena sold';
+
+  updateMultDisplay(last, R.opens.at(-1));
+  updateBtn();
+  updateStats();
+}
+
+// ─── Session Stats ────────────────────────────────────────────────────────────
+function updateStats() {
+  $('statRounds').textContent  = S.rounds;
+  $('statWagered').textContent = S.wagered > 0 ? '$' + S.wagered.toFixed(2) : '—';
+  const pnlEl = $('statPnl');
+  if (S.rounds === 0) {
+    pnlEl.textContent = '—';
+    pnlEl.className   = 'stat-val';
+  } else {
+    pnlEl.textContent = (S.pnl >= 0 ? '+' : '-') + '$' + Math.abs(S.pnl).toFixed(2);
+    pnlEl.className   = 'stat-val' + (S.pnl > 0 ? ' pos' : S.pnl < 0 ? ' neg' : '');
+  }
+  $('statBest').textContent = S.best > 1 ? fmtM(S.best) : '—';
+}
+
+// ─── History ─────────────────────────────────────────────────────────────────
+function addHistory(peak, chipCls) {
+  history.unshift({ peak, chipCls });
+  if (history.length > 24) history.length = 24;
+  renderHistory();
+}
+function renderHistory() {
+  if (!history.length) {
+    histStrip.innerHTML = '<span class="hist-empty">No rounds yet</span>';
+    return;
+  }
+  histStrip.innerHTML = '';
+  history.forEach(h => {
+    const c = document.createElement('span');
+    const crashed = h.peak <= 0;
+    c.className = 'hist-chip ' + (h.chipCls ?? 'd');
+    c.textContent = crashed ? 'CRASH' : fmtM(h.peak);
+    histStrip.appendChild(c);
+  });
+}
+
+// ─── Round logic ─────────────────────────────────────────────────────────────
+async function startRound() {
+  R.phase  = 'running';
+  R.step   = 0;
+  R.cols   = [];
+  R.opens  = [];
+  R.reason = '';
+
+  // Always reset bet result state for the new round — fixes color inheritance bug
+  R.hadBet    = false;
+  R.sellStep  = null;
+  B.cashedOut = false;
+  B.mult      = null;
+
+  // Activate queued bet
+  if (B.queued) {
+    R.hadBet    = true;
+    B.active    = true;
+    B.queued    = false;
+    S.wagered  += B.amount;
+    updateStats();
+  }
+
+  // Nonce (internal only)
+  R.nonce = R.nonce === 0 ? Math.floor(Date.now() / 1000) : R.nonce + 1;
+
+  // UI
+  cdOverlay.classList.add('hide');
+  multOverlay.classList.remove('hide');
+  resultTag.className = 'result-tag';   // clear first
+  if (R.hadBet) {
+    resultTag.textContent = 'IN GAME';
+    resultTag.className   = 'result-tag show ingame';
+  }
+  updatePhaseUI();
+  updateBtn();
+  updateMultDisplay(1, 1);
+
+  const ns = String(R.nonce);
+
+  // First step gate
+  const uGate = await rngU(SS, CS, ns, R.step++, 'A:gate');
+  if (uGate < P0A) {
+    R.opens.push(1);
+    R.cols.push(0);
+    drawChart();
+    updateMultDisplay(0, 1);
+    R.reason = 'CRASH';
+    endRound(true);
+    return;
+  }
+
+  // First column
+  const uBody = await rngU(SS, CS, ns, R.step++, 'A:body');
+  const A = 2 - 1.5 * Math.sqrt(1 - uBody);  // range [0.5, 2]
+  R.opens.push(1);
+  R.cols.push(A);
+
+  drawChart();
+  updatePhaseUI();
+  updateMultDisplay(A, 1);
+  spawnBadge((A / 1 - 1) * 100);
+
+  // Auto sell check
+  if (B.active && !B.cashedOut && A >= getSellTarget()) { cashOut(true); }
+
+  if (R.timer) clearInterval(R.timer);
+  R.timer = setInterval(stepRound, STEP_NORMAL);
+}
+
+async function stepRound() {
+  if (R.phase !== 'running') return;
+
+  if (R.cols.length >= MAX_COLS) {
+    if (B.active && !B.cashedOut) cashOut(true);
+    R.reason = 'MAX_COLS';
+    endRound(false, true);
+    return;
+  }
+
+  const last = R.cols.at(-1);
+  if (last === 0) { R.reason = 'CRASH'; endRound(true); return; }
+
+  const ns = String(R.nonce);
+  const uGate = await rngU(SS, CS, ns, R.step++, 'D:gate');
+  if (uGate < QD) {
+    R.opens.push(last);
+    R.cols.push(0);
+    drawChart();
+    updateMultDisplay(0, last);
+    R.reason = 'CRASH';
+    endRound(true);
+    return;
+  }
+
+  const uBody = await rngU(SS, CS, ns, R.step++, 'D:body');
+  const delta = 0.5 + 1.5 * uBody;  // range [0.5, 2]
+  let   next  = last * delta;
+
+  if (next >= MAX_MULT) {
+    next = MAX_MULT;
+    R.opens.push(last);
+    R.cols.push(next);
+    if (B.active && !B.cashedOut) cashOut(true);
+    drawChart();
+    updateMultDisplay(next, last);
+    R.reason = 'CAP';
+    endRound(false, true);
+    return;
+  }
+
+  R.opens.push(last);
+  R.cols.push(next);
+  drawChart();
+  updatePhaseUI();
+  updateMultDisplay(next, last);
+  spawnBadge((next / last - 1) * 100);
+
+  if (B.active && !B.cashedOut && next >= getSellTarget()) { cashOut(true); }
+}
+
+function endRound(crashed) {
+  if (R.timer) { clearInterval(R.timer); R.timer = null; }
+
+  // Player lost if still active
+  if (B.active && !B.cashedOut) {
+    B.active    = false;
+    B.cashedOut = true;
+    B.mult      = 0;
+    S.pnl      -= B.amount;  // lost entire bet
+    resultTag.textContent = 'CRASHED';
+    resultTag.className   = 'result-tag show r';
+  }
+
+  const posVals = R.cols.filter(x => x > 0);
+  const peak    = posVals.length ? Math.max(...posVals) : 0;
+
+  // Chip color rules:
+  //   had bet → green if sold > 1×, red if ≤ 1× or crashed
+  //   no bet  → gold if peak ≥ 2×, gray otherwise
+  const hadBet = R.hadBet;
+  let chipCls;
+  if (hadBet) {
+    chipCls = (B.mult !== null && B.mult > 1) ? 'g' : 'r';
+  } else {
+    chipCls = peak >= 2 ? 'gold' : 'd';
+  }
+  if (hadBet) S.rounds++;
+  addHistory(peak, chipCls);
+
+  R.phase  = 'ended';
+  R.reason = R.reason || (crashed ? 'CRASH' : 'END');
+  updatePhaseUI();
+  updateBtn();
+  updateStats();
+
+  // Transition to countdown
+  setTimeout(() => {
+    R.phase  = 'countdown';
+    R.cdLeft = BETWEEN_NORMAL;
+    cdOverlay.classList.remove('hide');
+    multOverlay.classList.add('hide');
+    drawChart();
+    updatePhaseUI();
+    updateBtn();
+
+    // Auto: queue next round
+    if (autoMode && autoRunning) {
+      if (autoRemaining !== Infinity) {
+        autoRemaining--;
+        updateAutoUI();
+      }
+      if (autoRemaining <= 0) { stopAuto(true); return; }
+      if (getBetAmt() <= balance) queueBet();
+    }
+  }, 700);
+}
+
+// ─── Countdown tick ───────────────────────────────────────────────────────────
+setInterval(() => {
+  if (R.phase !== 'countdown') return;
+  R.cdLeft -= 250;
+  const s = Math.max(0, Math.ceil(R.cdLeft / 1000));
+  cdNum.textContent = s;
+  phaseInfo.textContent = `Next round in ${s}s`;
+  if (R.cdLeft <= 0) startRound();
+}, 250);
+
+// ─── Bet placement ────────────────────────────────────────────────────────────
+function queueBet() {
+  if (B.queued || B.active) return;
+  const amt = getBetAmt();
+  if (amt > balance) return;
+  setBal(balance - amt);
+  B.amount    = amt;
+  B.queued    = true;
+  B.cashedOut = false;
+  B.mult      = null;
+  updateBtn();
+}
+function cancelBet() {
+  if (!B.queued) return;
+  setBal(balance + B.amount);
+  B.queued = false;
+  updateBtn();
+}
+function handleAction() {
+  const live    = R.phase === 'running';
+  const crashed = R.cols.length > 0 && R.cols.at(-1) === 0;
+  if (B.active && live && !B.cashedOut && !crashed) {
+    cashOut(false);
+  } else if (B.queued) {
+    cancelBet();
+  } else if (autoMode) {
+    if (autoRunning) stopAuto(false);
+    else startAuto();
+  } else {
+    queueBet();
+  }
+}
+
+// ─── Auto mode ────────────────────────────────────────────────────────────────
+function isInfBets() { const v = $('betsEl').value.trim(); return v === '∞' || v === ''; }
+function getAutoCount() { return isInfBets() ? Infinity : Math.max(1, parseInt($('betsEl').value) || 1); }
+function updateAutoUI() {
+  const v = autoRemaining;
+  $('betsEl').value = v === Infinity ? '∞' : v;
+}
+function startAuto() {
+  autoRunning   = true;
+  autoRemaining = getAutoCount();
+  updateBtn();
+  if (R.phase === 'countdown' && getBetAmt() <= balance) queueBet();
+}
+function stopAuto(exhausted) {
+  autoRunning = false;
+  if (exhausted) { autoRemaining = Infinity; $('betsEl').value = '∞'; }
+  updateBtn();
+}
+
+// ─── Sell Target UI ───────────────────────────────────────────────────────────
+function clearTarget() {
+  sellInput.value = '∞';
+  sellInput.classList.remove('has-target');
+  sellTarget = Infinity;
+  document.querySelectorAll('.sell-preset').forEach(b => b.classList.remove('on'));
+  drawChart();
+}
+function setTarget(v) {
+  sellInput.value = v.toFixed(2);
+  sellInput.classList.add('has-target');
+  sellTarget = v;
+  document.querySelectorAll('.sell-preset').forEach(b => {
+    b.classList.toggle('on', parseFloat(b.dataset.t) === v);
+  });
+  drawChart();
+}
+$('sellClear').onclick = clearTarget;
+document.querySelectorAll('.sell-preset').forEach(b => {
+  b.onclick = () => setTarget(parseFloat(b.dataset.t));
+});
+sellInput.addEventListener('input', () => {
+  const v = sellInput.value.trim();
+  if (!v || v === '∞') {
+    sellInput.classList.remove('has-target');
+    sellTarget = Infinity;
+  } else {
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 1) {
+      sellInput.classList.add('has-target');
+      sellTarget = n;
+    }
+  }
+  document.querySelectorAll('.sell-preset').forEach(b => b.classList.remove('on'));
+  drawChart();
+});
+
+// ─── Bet controls ─────────────────────────────────────────────────────────────
+actionBtn.onclick = handleAction;
+$('halfBtn').onclick = () => { betInput.value = Math.max(0.10, getBetAmt() / 2).toFixed(2); };
+$('dblBtn').onclick  = () => { betInput.value = Math.min(balance, getBetAmt() * 2).toFixed(2); };
+document.querySelectorAll('[data-v]').forEach(b => {
+  b.onclick = () => { betInput.value = parseFloat(b.dataset.v).toFixed(2); };
+});
+
+// ─── Mode toggle ─────────────────────────────────────────────────────────────
+$('modeManual').onclick = () => {
+  if (autoRunning) stopAuto(false);
+  autoMode = false;
+  $('modeManual').classList.add('active');
+  $('modeAuto').classList.remove('active');
+  $('autoBetsWrap').classList.remove('show');
+  updateBtn();
+};
+$('modeAuto').onclick = () => {
+  autoMode = true;
+  $('modeAuto').classList.add('active');
+  $('modeManual').classList.remove('active');
+  $('autoBetsWrap').classList.add('show');
+  updateBtn();
+};
+$('betsHalf').onclick = () => {
+  if (autoRunning) return;
+  const v = parseInt($('betsEl').value);
+  $('betsEl').value = !isNaN(v) && v > 1 ? Math.max(1, Math.floor(v / 2)) : '∞';
+};
+$('betsDouble').onclick = () => {
+  if (autoRunning) return;
+  const v = parseInt($('betsEl').value);
+  $('betsEl').value = !isNaN(v) ? Math.min(9999, v * 2) : 100;
+};
+document.querySelectorAll('[data-b]').forEach(b => {
+  b.onclick = () => { if (!autoRunning) $('betsEl').value = b.dataset.b; };
+});
+
+// ─── Resize handler ───────────────────────────────────────────────────────────
+window.addEventListener('resize', drawChart);
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+setBal(balance);
+updateBtn();
+renderHistory();
+updateStats();
+cdOverlay.classList.remove('hide');
+multOverlay.classList.add('hide');
+</script>
+</body>
+</html>
